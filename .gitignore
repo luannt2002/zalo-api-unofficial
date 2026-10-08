@@ -1,0 +1,10 @@
+# Credentials/session và artifacts local
+.env
+.env.*
+cookies.json
+credentials.json
+qr.png
+*.test
+*.out
+/.dev/
+/bin/

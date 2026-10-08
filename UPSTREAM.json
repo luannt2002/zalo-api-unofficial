@@ -1,0 +1,12 @@
+{
+  "upstream_repository": "https://github.com/RFS-ADRENO/zca-js",
+  "last_documented_baseline": "54df45d803fad7397eca04b2753cc0a894dc6e86",
+  "baseline_evidence": "luannt-2002/zalo-crm docs/INVENTORY.md at 362cdb96b5d33e2147b80629d702baa8fb8de378; referenced ZCA-JS-BASELINE.md is absent",
+  "upstream_head_observed": "dadfef18bcac53537741855c99f084152da1fad9",
+  "observed_on": "2026-10-08",
+  "verified_complete_parity_commit": null,
+  "source_repository": "https://github.com/luannt-2002/zalo-crm",
+  "source_commit": "362cdb96b5d33e2147b80629d702baa8fb8de378",
+  "source_subtree": "zalo-be-library",
+  "status": "Historical baseline documented; later upstream changes are not yet audited/ported."
+}
