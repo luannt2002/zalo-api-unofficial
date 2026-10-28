@@ -4,13 +4,47 @@
 
 - Tag `v0.1.0`: version SDK Go của repo này; initial experimental, không phải npm version.
 - `last_documented_baseline` trong UPSTREAM.json: mốc upstream có chứng cứ inventory; chưa là proof parity.
+- `listener_synced_through` trong UPSTREAM.json: commit upstream mà listener + model đã đối chiếu XONG (kèm PR đã port / cố ý hoãn). Đây là điểm bắt đầu diff của lần đồng bộ sau.
 - `upstream_head_observed`: HEAD đã nhìn thấy, không tự là commit đã port. `verified_complete_parity_commit` chỉ cập nhật khi audit/test đủ, hiện null.
 
-## Đồng bộ một lượt
+## Đồng bộ một lượt (listener / model)
 
-Clone/fetch RFS-ADRENO/zca-js vào checkout riêng. Diff từ documented baseline54df45d803fad7397eca04b2753cc0a894dc6e86 tới target commit; HEAD hiện quan sát là 0586dc5e4981985c5f16b9b3a5f285a02feb6f9b (28/10/2026). Review theo API/protocol, không merge TypeScript vào Go. Mapping trạng thái từng thay đổi: supported/ported/tested/deferred/not-applicable; ghi SHA và tests. Không tăng mốc complete parity nếu còn thiếu phần không được giải thích.
+Bắt đầu từ `listener_synced_through.commit`, không từ baseline cũ `54df45d`. Chạy ở gốc repo này; upstream nằm
+trong một checkout riêng ngoài repo (`$UP` dưới đây).
 
-Sửa endpoint/payload/response/error semantics trong Go, tests trước code; giữ websocket patches. Chạy GOMAXPROCS=2 go build -p 2 ./..., go vet -p 2 ./..., go test -race -p 2 -timeout 120s ./.... Review độc lập, ghi bằng chứng thật, không tự login account hoặc publish ngoài quyền user.
+```sh
+UP=../zca-js-upstream                                   # checkout riêng, chỉ đọc
+[ -d "$UP" ] || git clone https://github.com/RFS-ADRENO/zca-js "$UP"
+git -C "$UP" fetch origin
+FROM=$(jq -r .listener_synced_through.commit UPSTREAM.json)
+TO=$(git -C "$UP" rev-parse origin/main)
+
+# 1. Commit mới chạm listener/model/giải mã
+git -C "$UP" log --oneline "$FROM..$TO" -- src/apis/listen.ts src/models src/utils.ts
+git -C "$UP" diff "$FROM..$TO" -- src/apis/listen.ts src/models src/utils.ts
+# toàn bộ commit trong khoảng, để phân loại phần ngoài listener (deferred / not-applicable)
+git -C "$UP" log --oneline "$FROM..$TO"
+
+# 2. PR còn mở chạm listen.ts (so với listener_audit.open_prs_reviewed)
+curl -s 'https://api.github.com/repos/RFS-ADRENO/zca-js/pulls?state=open&per_page=100' \
+  | jq -r '.[] | "\(.number) \(.head.sha[0:7]) \(.updated_at) \(.title)"'
+curl -s https://api.github.com/repos/RFS-ADRENO/zca-js/pulls/<N>/files | jq -r '.[].filename'
+curl -s -H 'Accept: application/vnd.github.v3.diff' https://api.github.com/repos/RFS-ADRENO/zca-js/pulls/<N>
+```
+
+3. Port từng thay đổi theo nếp **test đỏ trước rồi xanh**: viết test Go tái hiện hành vi upstream (khung giả qua
+   `router`, máy chủ WebSocket giả cho vòng đời), chạy thấy đỏ trên code cũ, sửa code, thấy xanh. Thay đổi nào Go
+   đã đúng sẵn thì ghi "xanh ngay", không bịa đỏ. Review theo API/protocol, không chép TypeScript sang Go; giữ các
+   bản vá websocket (PATCH FORK). Một thay đổi = một commit.
+4. Kiểm cả gói: `GOMAXPROCS=2 go build -p 2 ./... && go vet -p 2 ./... && go test -p 2 ./... && go test -race -p 2 ./listener/...`.
+   So kết quả test theo TÊN với lần chạy trước (không đếm số).
+5. Cập nhật UPSTREAM.json: `listener_synced_through` (`commit` = `$TO` đã kiểm, `date`, `ported`, `deferred` kèm
+   lý do), `upstream_head_observed`, `observed_on`, và `listener_audit` (từng commit/PR: ported / deferred /
+   not-applicable + tên test). Bảng `listener_audit.event_coverage` phải còn khớp mọi `emit(...)` của listen.ts.
+6. Mục CHANGELOG mới mở đầu bằng dòng `Đồng bộ zca-js tới <SHA ngắn> (<ngày>) + <bản vá cộng đồng nếu có>`, rồi liệt
+   kê luồng/sự kiện mới và thay đổi hành vi ứng dụng phải biết.
+7. Review độc lập, rồi tag phiên bản mới (mục dưới). Không tái dùng tag đã publish; không tự login account hay
+   publish ngoài quyền user.
 
 ## Release Go
 

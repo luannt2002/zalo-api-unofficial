@@ -4,6 +4,51 @@
   "baseline_evidence": "luannt-2002/zalo-crm docs/INVENTORY.md at 362cdb96b5d33e2147b80629d702baa8fb8de378; referenced ZCA-JS-BASELINE.md is absent",
   "upstream_head_observed": "0586dc5e4981985c5f16b9b3a5f285a02feb6f9b",
   "observed_on": "2026-10-28",
+  "listener_synced_through": {
+    "commit": "0586dc5e4981985c5f16b9b3a5f285a02feb6f9b",
+    "date": "2026-10-28",
+    "community_patch": "zca-js 2.1.2",
+    "scope": "src/apis/listen.ts, src/models, decodeEventData in src/utils.ts; open PRs touching listen.ts as of date",
+    "ported": [
+      "PR #378 (cmd 551, merged)",
+      "PR #380 (unread_cleared 504/524, open)",
+      "PR #384 (unhandled cmds, closed unmerged; as Unhandled())",
+      "PR #387 (Stop cancels reconnect, open)",
+      "PR #391 (undo in old_messages, open)",
+      "PR #371 (1006 retry, open; partial)",
+      "zca-js 2.1.2 patch: pinned_convers, mark_unread, voip, 30 s stable window, 1006 2/5/10/20/30/60 s x8"
+    ],
+    "deferred": [
+      {
+        "ref": "PR #371 (rest)",
+        "reason": "endpoint rotation on 1006 with wrap-around, reconnecting event, internal schedule fallback: needs a multi-endpoint test setup"
+      },
+      {
+        "ref": "closed on stop()",
+        "reason": "upstream always emits closed(1000) after stop(); Go emits it only sometimes (3/40 measured). Always or never is an API decision"
+      },
+      {
+        "ref": "d04282c (PR #327)",
+        "reason": "new APIs and API_VERSION 671->685: not listener; wire constant needs its own audit"
+      },
+      {
+        "ref": "5a93a0e, 0586dc5 (PR #381)",
+        "reason": "addReaction validation: not listener"
+      },
+      {
+        "ref": "PR #382, #393",
+        "reason": "uploadAttachment: API, not listener"
+      },
+      {
+        "ref": "PR #392",
+        "reason": "loginQR: not listener"
+      },
+      {
+        "ref": "PR #370, #375, #383, #388, #389",
+        "reason": "API changes, not listener"
+      }
+    ]
+  },
   "verified_complete_parity_commit": null,
   "source_repository": "https://github.com/luannt-2002/zalo-crm",
   "source_commit": "362cdb96b5d33e2147b80629d702baa8fb8de378",

@@ -2,7 +2,11 @@
 
 ## Unreleased (đề xuất v0.2.0)
 
-Đối chiếu zca-js tới `0586dc5` và zca-js 2.1.2 community patch; chi tiết trong `UPSTREAM.json` (`listener_audit`).
+Đồng bộ zca-js tới `0586dc5` (2026-10-28) + bản vá cộng đồng zca-js 2.1.2.
+
+Listener và model đã đối chiếu tới commit đó, kèm các PR còn mở chạm `listen.ts` (#380, #387, #391, một phần
+#371); điểm bắt đầu lần đồng bộ sau là `listener_synced_through` trong `UPSTREAM.json`, chi tiết từng PR và bảng
+phủ sự kiện ở `listener_audit`.
 
 ### Thêm (tương thích, nhưng `listener.Listener` có thêm method — ai tự cài interface này phải bổ sung)
 - Định tuyến cmd 551 như 501 (upstream PR #378).
