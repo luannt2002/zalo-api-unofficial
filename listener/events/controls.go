@@ -20,6 +20,10 @@ type ControlContent struct {
 	Data       controlData `json:"data"`
 
 	FileID *int64 `json:"fileId,omitempty"`
+
+	// RawData is the control data with a string-encoded JSON layer removed, for
+	// act_types that have no typed decoder (pinned_convers, voip).
+	RawData json.RawMessage `json:"-"`
 }
 
 type controlData struct {
@@ -66,6 +70,11 @@ func (c *ControlContent) UnmarshalJSON(data []byte) error {
 			return err
 		}
 		payload = []byte(s)
+	}
+	if json.Valid(payload) {
+		c.RawData = payload
+	} else {
+		c.RawData = raw.Data
 	}
 
 	var cd controlData

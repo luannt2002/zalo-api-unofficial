@@ -287,6 +287,12 @@ func rawString(b json.RawMessage) string {
 	return string(b)
 }
 
+// rawInt reads an integer sent as a string or a number; 0 when absent or not numeric.
+func rawInt(b json.RawMessage) int64 {
+	n, _ := strconv.ParseInt(rawString(b), 10, 64)
+	return n
+}
+
 func (ln *listener) handleReactions(ctx context.Context, body BaseWSMessage) {
 	eventData, err := decodeEventData[events.ReactionEventData](body, ln.cipherKey)
 	if err != nil {
@@ -382,6 +388,8 @@ func (ln *listener) handleControls(ctx context.Context, body BaseWSMessage) {
 			ln.handleGroupEvent(ctx, content)
 		case "fr":
 			ln.handleFriendEvent(ctx, content)
+		case "pinned_convers":
+			ln.handlePinnedConversations(ctx, content)
 		}
 	}
 }
@@ -438,6 +446,26 @@ func (ln *listener) handleFriendEvent(ctx context.Context, content events.Contro
 		return
 	}
 	emit(ctx, ln.ch.Friend, ev)
+}
+
+func (ln *listener) handlePinnedConversations(ctx context.Context, content events.ControlContent) {
+	var d struct {
+		Tab    json.RawMessage `json:"tab"`
+		Action json.RawMessage `json:"action"`
+		PinIDs []string        `json:"pinIds"`
+		TS     json.RawMessage `json:"ts"`
+	}
+	if err := json.Unmarshal(content.RawData, &d); err != nil {
+		ln.emitError(ctx, errs.WrapZCA("Failed to decode pinned_convers data:", "listener.handlePinnedConversations", err))
+		return
+	}
+	emit(ctx, ln.ch.PinConversations, model.PinConversationsUpdate{
+		Tab:    rawInt(d.Tab),
+		Action: rawInt(d.Action),
+		PinIDs: d.PinIDs,
+		TS:     rawInt(d.TS),
+		Data:   content.RawData,
+	})
 }
 
 func (ln *listener) handleDuplicateConnection() {

@@ -112,3 +112,38 @@ func TestRouterUnreadClearedKhongPhatKhiRong(t *testing.T) {
 	ln.router(context.Background(), 1, 504, 0, plainFrame(`{"clearUnreads":[]}`))
 	assertEmpty(t, ln.UnreadCleared())
 }
+
+// controlFrame bọc một danh sách content thành khung cmd 601.
+func controlFrame(contents ...string) BaseWSMessage {
+	items := ""
+	for i, c := range contents {
+		if i > 0 {
+			items += ","
+		}
+		items += `{"content":` + c + `}`
+	}
+	return plainFrame(`{"controls":[` + items + `]}`)
+}
+
+// cmd 601 act_type "pinned_convers": ghim/bỏ ghim hội thoại ở sidebar. Bản gốc bỏ im lặng.
+// data có lúc là chuỗi JSON, có lúc là object.
+func TestRouterPinnedConversations(t *testing.T) {
+	ln := newRouterTestListener(t)
+	ln.router(context.Background(), 1, 601, 0, controlFrame(
+		`{"act_type":"pinned_convers","act":"update","data":"{\"tab\":0,\"action\":1,\"pinIds\":[\"u200\",\"g300\"],\"ts\":1700000000000}"}`,
+		`{"act_type":"pinned_convers","act":"update","data":{"tab":1,"action":2,"pinIds":["u201"],"ts":"1700000000001"}}`,
+	))
+
+	first := recvOne(t, ln.PinConversations())
+	if first.Action != 1 || first.Tab != 0 || first.TS != 1700000000000 ||
+		len(first.PinIDs) != 2 || first.PinIDs[0] != "u200" || first.PinIDs[1] != "g300" {
+		t.Fatalf("first = %+v", first)
+	}
+	if len(first.Data) == 0 {
+		t.Fatal("first.Data rỗng, mong giữ bản thô")
+	}
+	second := recvOne(t, ln.PinConversations())
+	if second.Action != 2 || second.Tab != 1 || second.TS != 1700000000001 || len(second.PinIDs) != 1 || second.PinIDs[0] != "u201" {
+		t.Fatalf("second = %+v", second)
+	}
+}

@@ -51,6 +51,8 @@ type Listener interface {
 	CipherKey() <-chan string
 	// Conversations read on another device of this account (cmd 504/524).
 	UnreadCleared() <-chan []model.ClearUnread
+	// Conversations pinned/unpinned in the sidebar (cmd 601 "pinned_convers").
+	PinConversations() <-chan model.PinConversationsUpdate
 
 	SendWS(ctx context.Context, payload WSPayload, requireID bool) error
 
@@ -478,5 +480,6 @@ func initializeChannels() channels {
 		Group:             make(chan model.GroupEvent, buf.Group),
 		CipherKey:         make(chan string, buf.CipherKey),
 		UnreadCleared:     make(chan []model.ClearUnread, buf.UnreadCleared),
+		PinConversations:  make(chan model.PinConversationsUpdate, buf.PinConversations),
 	}
 }
