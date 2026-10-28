@@ -1,6 +1,8 @@
 package model
 
-import "encoding/json"
+import (
+	"github.com/luannt2002/zalo-api-unofficial/internal/jsonx"
+)
 
 type GroupTopicType int
 
@@ -117,7 +119,7 @@ func (p *GroupTopicFileMessageParams) UnmarshalJSON(data []byte) error {
 		alias: (*alias)(p),
 	}
 
-	if err := json.Unmarshal(data, &aux); err != nil {
+	if err := jsonx.UnmarshalLenient(data, aux); err != nil {
 		return err
 	}
 
@@ -127,7 +129,7 @@ func (p *GroupTopicFileMessageParams) UnmarshalJSON(data []byte) error {
 	}
 
 	var extra GroupTopicFileMessageExtra
-	if err := json.Unmarshal([]byte(aux.Extra), &extra); err != nil {
+	if err := jsonx.UnmarshalLenient([]byte(aux.Extra), &extra); err != nil {
 		return err
 	}
 	p.Extra = extra

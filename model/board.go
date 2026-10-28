@@ -2,6 +2,8 @@ package model
 
 import (
 	"encoding/json"
+
+	"github.com/luannt2002/zalo-api-unofficial/internal/jsonx"
 )
 
 type BoardType int
@@ -75,13 +77,13 @@ func (n *NoteDetail) UnmarshalJSON(data []byte) error {
 		alias: (*alias)(n),
 	}
 
-	if err := json.Unmarshal(data, &aux); err != nil {
+	if err := jsonx.UnmarshalLenient(data, aux); err != nil {
 		return err
 	}
 
 	if len(aux.Params) > 0 && string(aux.Params) != "null" {
 		var params NoteParams
-		if err := json.Unmarshal(aux.Params, &params); err == nil {
+		if err := jsonx.UnmarshalLenient(aux.Params, &params); err == nil {
 			n.Params = params
 		}
 	}
@@ -132,7 +134,7 @@ func (p *PinnedMessageDetailParams) UnmarshalJSON(data []byte) error {
 		data = []byte(s)
 	}
 
-	if err := json.Unmarshal(data, &a); err != nil {
+	if err := jsonx.UnmarshalLenient(data, &a); err != nil {
 		return err
 	}
 	*p = PinnedMessageDetailParams(a)

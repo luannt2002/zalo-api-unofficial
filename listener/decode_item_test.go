@@ -112,3 +112,23 @@ func TestDecodeItemRawCatNgan(t *testing.T) {
 		t.Fatalf("err = %v, len(Raw) = %d, mong *DecodeError và Raw <= 600", err, len(de.Raw))
 	}
 }
+
+// Control nhóm/bạn bè giải hỏng trước đây bị bỏ im lặng (GroupEvent nil ⇒ return).
+func TestDecodeItemControlNhomHong(t *testing.T) {
+	ln := newRouterTestListener(t)
+	before := DecodeFailures()
+	ln.router(context.Background(), 1, 601, 0, controlFrame(
+		`{"act_type":"group","act":"join","data":[1,2]}`,
+		`{"act_type":"fr","act":"add","data":"{\"x\":1}"}`,
+	))
+	var de *DecodeError
+	if err := recvOne(t, ln.Error()); !errors.As(err, &de) || de.Op != "listener.handleControls" {
+		t.Fatalf("err = %v, mong *DecodeError từ listener.handleControls", err)
+	}
+	if got := DecodeFailures() - before; got != 1 {
+		t.Fatalf("DecodeFailures tăng %d, mong 1", got)
+	}
+	if fe := recvOne(t, ln.Friend()); fe == nil {
+		t.Fatal("sự kiện bạn bè hợp lệ phải vẫn tới")
+	}
+}

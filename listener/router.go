@@ -394,6 +394,10 @@ func (ln *listener) handleControls(ctx context.Context, body BaseWSMessage) {
 
 	for _, ctrl := range eventData.Data.Controls {
 		content := ctrl.Content
+		if content.Err != nil {
+			ln.emitItemErrors(ctx, "listener.handleControls", []events.ItemError{*content.Err})
+			continue
+		}
 
 		switch content.ActionType {
 		case "file_done":
@@ -409,7 +413,7 @@ func (ln *listener) handleControls(ctx context.Context, body BaseWSMessage) {
 		case "voip":
 			emit(ctx, ln.ch.Voip, model.VoipEvent{Act: content.Action, Data: content.RawData})
 		default:
-			ln.emitUnhandled(RawFrame{Version: 1, CMD: 601, ActType: content.ActionType, Data: content.RawData})
+			ln.emitUnhandled(RawFrame{Version: 1, CMD: 601, ActType: content.ActionType, Act: content.Action, Data: content.RawData})
 		}
 	}
 }
@@ -450,14 +454,15 @@ func (ln *listener) handleGroupEvent(ctx context.Context, content events.Control
 }
 
 func (ln *listener) handleFriendEvent(ctx context.Context, content events.ControlContent) {
-	if content.Data.FriendEvent == nil {
-		return
-	}
-
 	// 31/08/2024
 	// For some reason, Zalo send both join and join_reject event when admin approve join requests
 	// Zalo itself doesn't seem to handle this properly either, so we gonna ignore the join_reject event
 	if content.Action == "req" {
+		return
+	}
+
+	if content.Data.FriendEvent == nil {
+		ln.emitUnhandled(RawFrame{Version: 1, CMD: 601, ActType: content.ActionType, Act: content.Action, Data: content.RawData})
 		return
 	}
 

@@ -55,3 +55,24 @@ func TestUnhandledKhongDayDroppedEvents(t *testing.T) {
 		t.Fatalf("UnhandledFrames tăng %d, mong 200", got)
 	}
 }
+
+// Hành động bạn bè lạ không phải lỗi giải mã: lộ qua Unhandled (kèm act). "req" đi kèm "req_v2"
+// và bị bỏ có chủ đích — không được thành nhiễu.
+func TestUnhandledFriendActionLa(t *testing.T) {
+	ln := newRouterTestListener(t)
+	errsBefore, unhandledBefore := DecodeFailures(), UnhandledFrames()
+	ln.router(context.Background(), 1, 601, 0, controlFrame(
+		`{"act_type":"fr","act":"zzz_moi","data":{"k":1}}`,
+		`{"act_type":"fr","act":"req","data":{"k":2}}`,
+	))
+	if got := DecodeFailures() - errsBefore; got != 0 {
+		t.Fatalf("DecodeFailures tăng %d, mong 0", got)
+	}
+	if got := UnhandledFrames() - unhandledBefore; got != 1 {
+		t.Fatalf("UnhandledFrames tăng %d, mong 1 (chỉ zzz_moi)", got)
+	}
+	if f := recvOne(t, ln.Unhandled()); f.ActType != "fr" || f.Act != "zzz_moi" || string(f.Data) != `{"k":1}` {
+		t.Fatalf("frame = %+v (Data=%s)", f, f.Data)
+	}
+	assertEmpty(t, ln.Error())
+}

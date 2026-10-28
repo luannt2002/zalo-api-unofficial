@@ -1,6 +1,10 @@
 package model
 
-import "encoding/json"
+import (
+	"encoding/json"
+
+	"github.com/luannt2002/zalo-api-unofficial/internal/jsonx"
+)
 
 type FriendEventType string
 
@@ -216,7 +220,7 @@ func (p *TFriendEventPinCreateTopicParams) UnmarshalJSON(data []byte) error {
 
 	type alias TFriendEventPinCreateTopicParams
 	var tmp alias
-	if err := json.Unmarshal(data, &tmp); err != nil {
+	if err := jsonx.UnmarshalLenient(data, &tmp); err != nil {
 		return err
 	}
 	*p = TFriendEventPinCreateTopicParams(tmp)
