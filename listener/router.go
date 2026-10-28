@@ -57,6 +57,11 @@ func (ln *listener) router(ctx context.Context, version, cmd, sub uint, body Bas
 		ln.handleDuplicateConnection()
 
 	default:
+		f := RawFrame{Version: version, CMD: cmd, SubCMD: sub}
+		if d, err := decodeEventData[json.RawMessage](body, ln.cipherKey); err == nil {
+			f.Data = d.Data
+		}
+		ln.emitUnhandled(f)
 	}
 }
 
@@ -403,6 +408,8 @@ func (ln *listener) handleControls(ctx context.Context, body BaseWSMessage) {
 			ln.handleMarkUnread(ctx, content)
 		case "voip":
 			emit(ctx, ln.ch.Voip, model.VoipEvent{Act: content.Action, Data: content.RawData})
+		default:
+			ln.emitUnhandled(RawFrame{Version: 1, CMD: 601, ActType: content.ActionType, Data: content.RawData})
 		}
 	}
 }

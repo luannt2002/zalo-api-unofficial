@@ -57,6 +57,8 @@ type Listener interface {
 	UnreadMark() <-chan model.UnreadMarkUpdate
 	// Call signaling, raw (cmd 601 "voip").
 	Voip() <-chan model.VoipEvent
+	// Frames/controls with no handler (diagnostics; full channel drops, see UnhandledFrames).
+	Unhandled() <-chan RawFrame
 
 	SendWS(ctx context.Context, payload WSPayload, requireID bool) error
 
@@ -487,5 +489,6 @@ func initializeChannels() channels {
 		PinConversations:  make(chan model.PinConversationsUpdate, buf.PinConversations),
 		UnreadMark:        make(chan model.UnreadMarkUpdate, buf.UnreadMark),
 		Voip:              make(chan model.VoipEvent, buf.Voip),
+		Unhandled:         make(chan RawFrame, buf.Unhandled),
 	}
 }

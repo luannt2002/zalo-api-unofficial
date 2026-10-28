@@ -29,6 +29,7 @@ type Buffers struct {
 	PinConversations  int
 	UnreadMark        int
 	Voip              int
+	Unhandled         int
 }
 
 func defaultBuffers() Buffers {
@@ -57,6 +58,7 @@ func defaultBuffers() Buffers {
 		PinConversations:  64,
 		UnreadMark:        64,
 		Voip:              64,
+		Unhandled:         64,
 	}
 }
 
@@ -81,6 +83,7 @@ type channels struct {
 	PinConversations  chan model.PinConversationsUpdate
 	UnreadMark        chan model.UnreadMarkUpdate
 	Voip              chan model.VoipEvent
+	Unhandled         chan RawFrame
 }
 
 func (ln *listener) Connected() <-chan struct{}                { return ln.ch.Connected }
@@ -108,6 +111,7 @@ func (ln *listener) PinConversations() <-chan model.PinConversationsUpdate {
 }
 func (ln *listener) UnreadMark() <-chan model.UnreadMarkUpdate { return ln.ch.UnreadMark }
 func (ln *listener) Voip() <-chan model.VoipEvent              { return ln.ch.Voip }
+func (ln *listener) Unhandled() <-chan RawFrame                { return ln.ch.Unhandled }
 
 func (ln *listener) emitError(ctx context.Context, err error) {
 	select {
