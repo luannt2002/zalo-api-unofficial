@@ -8,7 +8,7 @@ import (
 // RawFrame is a frame, or a cmd 601 control, the router has no handler for.
 type RawFrame struct {
 	Version, CMD, SubCMD uint
-	ActType, Act         string          // set for cmd 601 controls with no handler
+	ActType, Act         string          // set for cmd 601 controls and cmd 602 actions with no handler
 	Data                 json.RawMessage // decoded payload; nil if it could not be decoded
 }
 

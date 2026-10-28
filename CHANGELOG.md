@@ -30,6 +30,8 @@ phủ sự kiện ở `listener_audit`.
 - Nối lại mà quay số lỗi (mạng còn đứt, máy chủ từ chối nâng cấp) tính như một lần đóng `1006`: mỗi lượt phát
   `Error()` + `Disconnected()` rồi đi tiếp lịch thử lại; chỉ `Closed()` khi hết lượt (trước: `Closed()` ngay lượt
   quay số lỗi đầu tiên, nên lịch 2/5/10/20/30/60 s × 8 thực tế không chạy khi mạng chưa về).
+  Mạng/máy chủ hỏng hẳn: `Closed()` tới sau khoảng 2–4 phút (8 lượt 2+5+10+20+30+60+60+60 s, mỗi lượt dao động
+  [d/2, d], cộng thời gian quay số), không còn tới ngay.
 - `Stop()` rồi `Start()` lại trên kết nối đang sống chạy được (trước: thường báo "Already started" vì client cũ
   không được dọn). `Stop()` huỷ và đọc client trong cùng một vùng khoá, nên không còn cửa sổ để lần nối lại
   đang quay số tạo ra một kết nối không ai đóng.
@@ -42,9 +44,11 @@ phủ sự kiện ở `listener_audit`.
   `DecodeError.Error()` vẫn chứa tới 512 byte nội dung tin (dữ liệu người dùng) — xem USAGE.
 - Friend action chưa có decoder đi vào `Unhandled()`; control nhóm/bạn bè giải hỏng phát `*DecodeError`.
 - Tin cũ của nhóm (cmd 511) là `model.GroupMessage` (ThreadID = nhóm), như upstream; trước là `UserMessage` với
-  ThreadID = người gửi — ứng dụng nào đang tự sửa thread = `idTo` phải bỏ phần sửa đó.
+  ThreadID = người gửi — ứng dụng nào đang tự sửa thread = `idTo` phải bỏ phần sửa đó. Code ép kiểu `m.(model.UserMessage)` trên
+  phần tử của lô 511 giờ sẽ panic (dạng một giá trị) hoặc trả `ok=false` — dùng type switch.
 - `OldMessages` / `OldReactions` lấy loại thread theo cmd (510/610 = 1-1, 511/611 = nhóm), không đoán theo payload
-  (trước: lô nhóm rỗng bị báo là 1-1). Thu hồi không còn lẫn trong `OldMessages.Messages`.
+  (trước: lô nhóm rỗng bị báo là 1-1). Thu hồi không còn lẫn trong `OldMessages.Messages`. Lô tin cũ chỉ toàn thu
+  hồi phát `OldMessages()` rỗng rồi các `Undo()` (như upstream PR #391).
 - Item `chat.undo` không giải được (vd `content.cliMsgId` không phải số) phát `*DecodeError`; trước đây rơi sang
   nhánh tin và hiện ra như một tin mới.
 - Typing (cmd 602) giải khoan dung như tin (vd `isPC` dạng chuỗi, `gid` dạng số); không giải được thì phát
@@ -55,3 +59,11 @@ phủ sự kiện ở `listener_audit`.
 - Kênh tuỳ chọn (`Unhandled`, `UnreadCleared`, `PinConversations`, `UnreadMark`, `Voip`) đầy thì bỏ tin MỚI và
   đếm vào `DroppedOptionalEvents()`, không vào `DroppedEvents()` — ứng dụng không đọc các kênh này không bị
   báo động giả. `DroppedEvents()` giờ chỉ là kênh lõi (tin, reaction, undo, nhóm, bạn bè, receipt...).
+
+### Đã biết (chưa sửa trong bản này)
+- `Stop()` có thể chờ tới khi lượt quay số đang chạy kết thúc hoặc hết hạn: lượt nối lại giữ `ln.mu` trong lúc quay số.
+- Lỗi REST trong `internal/httpx` chưa được che query của URL như lỗi quay số WebSocket.
+- Huỷ context đã truyền cho `Start()` không đóng socket (đo: máy chủ còn thấy kết nối mở sau 8 s, `client` kẹt,
+  `Start()` sau đó báo "Already started"); có từ trước đợt này. Dùng `Stop()` để dừng.
+- Sau `Stop()`, `Disconnected()` / `Closed()` có thể tới hoặc không (đo 3/40 lần có `Closed`); zca-js luôn phát
+  `closed(1000)`. Chưa chốt hướng.

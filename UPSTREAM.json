@@ -111,11 +111,13 @@
         "head": "9bcc631e51017ad19c7bd78d720d3a5f2f74e107",
         "subject": "cancel reconnects, discard stale socket callbacks",
         "status": "ported",
-        "note": "Stop() cancels pending reconnect. Per-callback stale-socket guards not-applicable: Go reads each connection in its own goroutine and Start cancels the previous attempt context (restart-in-backoff test passes on baseline).",
+        "note": "Stop() cancels pending reconnect. Stale-callback guard ported where Go has one: a failed reconnect dial's callback resets / emits Closed / cancels only while its context is still the latest attempt (ln.attempt). Read loops need none: each connection has its own goroutine and Stop waits for it.",
         "tests": [
           "listener/TestLifecycleStopHuyHenGioThuLai",
           "listener/TestLifecycleKhoiDongLaiTrongLucCho",
-          "listener/TestLifecycleStopRoiStartLai"
+          "listener/TestLifecycleStopRoiStartLai",
+          "listener/TestLifecycleCallbackCuKhongGietStartMoi",
+          "listener/TestLifecycleStopKhongLotLuotNoiLai"
         ]
       },
       {
