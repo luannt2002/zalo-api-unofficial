@@ -85,6 +85,9 @@ type listener struct {
 	// retryStates on every healthy connection.
 	fallbackRetries map[int]int
 	rotateCount     int
+	// stableAfter: a connection must stay up this long after the cipher key
+	// before the retry counters are cleared.
+	stableAfter time.Duration
 
 	cipherKey string
 
@@ -128,6 +131,7 @@ func New(sc session.MutableContext, urls []string) (*listener, error) {
 		retryStates:     retryStates,
 		fallbackRetries: make(map[int]int),
 		rotateCount:     0,
+		stableAfter:     30 * time.Second,
 
 		cipherKey:   "",
 		selfListen:  sc.Options().SelfListen,

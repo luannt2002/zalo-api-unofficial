@@ -152,3 +152,51 @@ func TestLifecycleKhoiDongLaiTrongLucCho(t *testing.T) {
 		t.Fatalf("máy chủ nhận %d kết nối, mong 2", n)
 	}
 }
+
+// Ca 3 — socket mở, nhận khoá rồi đóng ngay (phiên hỏng) KHÔNG được tính là nối thành công.
+// Bản cũ xoá bộ đếm thử lại ngay khi nhận khoá ⇒ thử lại vô hạn, không bao giờ phát Closed.
+func TestLifecycleSocketChapChonPhaiHetLuot(t *testing.T) {
+	f := startFakeWS(t, func(ctx context.Context, c *websocket.Conn, n int32) {
+		if sendCipherKey(ctx, c) != nil {
+			return
+		}
+		time.Sleep(50 * time.Millisecond)
+		c.Close(4000, "flap")
+	})
+	ln := newLiveListener(t, f.url, retrySettings("4000", 2, 20))
+
+	if err := ln.Start(context.Background(), true); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	ci := recvWithin(t, ln.Closed(), 5*time.Second, "Closed sau khi hết 2 lượt thử lại")
+	if ci.Code != 4000 {
+		t.Fatalf("Closed code = %d, mong 4000", ci.Code)
+	}
+	if n := f.conns.Load(); n != 3 {
+		t.Fatalf("máy chủ nhận %d kết nối, mong 3 (1 + 2 lượt thử lại)", n)
+	}
+}
+
+// Mặt còn lại của bảng chân trị: socket sống quá ngưỡng ổn định thì bộ đếm phải về 0, listener
+// tiếp tục nối lại (không được phát Closed vì những lần đứt rời rạc).
+func TestLifecycleSocketOnDinhThiXoaBoDem(t *testing.T) {
+	f := startFakeWS(t, func(ctx context.Context, c *websocket.Conn, n int32) {
+		if sendCipherKey(ctx, c) != nil {
+			return
+		}
+		time.Sleep(300 * time.Millisecond)
+		c.Close(4000, "rare")
+	})
+	ln := newLiveListener(t, f.url, retrySettings("4000", 1, 20))
+	ln.stableAfter = 100 * time.Millisecond
+
+	if err := ln.Start(context.Background(), true); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	waitFor(t, 5*time.Second, "≥4 kết nối", func() bool { return f.conns.Load() >= 4 })
+	select {
+	case ci := <-ln.Closed():
+		t.Fatalf("Closed %+v dù mỗi socket đều sống quá ngưỡng ổn định", ci)
+	default:
+	}
+}

@@ -79,10 +79,16 @@ func (ln *listener) handleCipherKey(ctx context.Context, body BaseWSMessage) {
 	ln.cipherKey = key
 	emit(ctx, ln.ch.CipherKey, key)
 
-	// Receiving the cipher key is the proof of a healthy connection: clear the
-	// accumulated retry/rotation counters so the retry budget only applies to
-	// consecutive failures, not to every blip since process start.
-	ln.resetRetryCounters()
+	// Clear the retry/rotation counters only once this connection has stayed up
+	// for stableAfter: a session that gets the key and drops right away must
+	// still exhaust its retry budget and reach Closed.
+	if cl := ln.getClient(); cl != nil {
+		time.AfterFunc(ln.stableAfter, func() {
+			if ctx.Err() == nil && ln.getClient() == cl {
+				ln.resetRetryCounters()
+			}
+		})
+	}
 
 	if ln.pingStopper != nil {
 		(*ln.pingStopper)()
