@@ -230,9 +230,12 @@ Các kênh đầy đủ trên `Listener`:
 | `PinConversations()` | `<-chan model.PinConversationsUpdate` | Ghim/bỏ ghim hội thoại ở sidebar (601 `pinned_convers`) |
 | `UnreadMark()` | `<-chan model.UnreadMarkUpdate` | Đánh dấu/bỏ đánh dấu chưa đọc ở thiết bị khác (601 `mark_unread`) |
 | `Voip()` | `<-chan model.VoipEvent` | Tín hiệu cuộc gọi thô (601 `voip`) |
-| `Unhandled()` | `<-chan listener.RawFrame` | Khung/control router chưa xử lý (chẩn đoán; đầy thì bỏ, không tính vào `DroppedEvents`) |
+| `Unhandled()` | `<-chan listener.RawFrame` | Khung/control router chưa xử lý (chẩn đoán) |
 
-Bộ đếm toàn tiến trình: `listener.DroppedEvents()` (rơi vì kênh đầy), `listener.DecodeFailures()` (tin/khung
+Kênh tuỳ chọn — `UnreadCleared`, `PinConversations`, `UnreadMark`, `Voip`, `Unhandled` — đầy thì bỏ tin mới và
+đếm vào `listener.DroppedOptionalEvents()`; ứng dụng không đọc các kênh này sẽ thấy số đó tăng đều, không phải mất tin.
+
+Bộ đếm toàn tiến trình: `listener.DroppedEvents()` (kênh lõi rơi vì đầy), `listener.DecodeFailures()` (tin/khung
 không giải mã được — tin hỏng bị bỏ, phần còn lại của lô vẫn tới, lỗi `*listener.DecodeError` kèm `MsgID` và
 `Raw` cắt ngắn phát trên `Error()`), `listener.UnhandledFrames()` (cmd/act_type chưa có handler).
 

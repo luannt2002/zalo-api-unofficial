@@ -289,7 +289,7 @@ func (ln *listener) handleClearUnreads(ctx context.Context, body BaseWSMessage, 
 		})
 	}
 	if len(items) > 0 {
-		emit(ctx, ln.ch.UnreadCleared, items)
+		offer(ln.ch.UnreadCleared, items, &droppedOptional)
 	}
 }
 
@@ -417,7 +417,7 @@ func (ln *listener) handleControls(ctx context.Context, body BaseWSMessage) {
 		case "mark_unread":
 			ln.handleMarkUnread(ctx, content)
 		case "voip":
-			emit(ctx, ln.ch.Voip, model.VoipEvent{Act: content.Action, Data: content.RawData})
+			offer(ln.ch.Voip, model.VoipEvent{Act: content.Action, Data: content.RawData}, &droppedOptional)
 		default:
 			ln.emitUnhandled(RawFrame{Version: 1, CMD: 601, ActType: content.ActionType, Act: content.Action, Data: content.RawData})
 		}
@@ -490,13 +490,13 @@ func (ln *listener) handlePinnedConversations(ctx context.Context, content event
 		ln.emitDecodeFailure(ctx, errs.WrapZCA("Failed to decode pinned_convers data:", "listener.handlePinnedConversations", err))
 		return
 	}
-	emit(ctx, ln.ch.PinConversations, model.PinConversationsUpdate{
+	offer(ln.ch.PinConversations, model.PinConversationsUpdate{
 		Tab:    rawInt(d.Tab),
 		Action: rawInt(d.Action),
 		PinIDs: d.PinIDs,
 		TS:     rawInt(d.TS),
 		Data:   content.RawData,
-	})
+	}, &droppedOptional)
 }
 
 func (ln *listener) handleMarkUnread(ctx context.Context, content events.ControlContent) {
@@ -515,11 +515,11 @@ func (ln *listener) handleMarkUnread(ctx context.Context, content events.Control
 	if content.Action == "remove" {
 		action = "remove"
 	}
-	emit(ctx, ln.ch.UnreadMark, model.UnreadMarkUpdate{
+	offer(ln.ch.UnreadMark, model.UnreadMarkUpdate{
 		Action:   action,
 		UserIDs:  markUnreadIDs(d.ConvsUser),
 		GroupIDs: markUnreadIDs(d.ConvsGroup),
-	})
+	}, &droppedOptional)
 }
 
 // markUnreadIDs accepts "add" items ({id, ts, fromUid, cliMsgId}) and "remove"

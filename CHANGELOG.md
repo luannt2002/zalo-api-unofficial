@@ -8,6 +8,7 @@
 - Định tuyến cmd 551 như 501 (upstream PR #378).
 - `UnreadCleared()` cho cmd 504/524 (upstream PR #380); `PinConversations()`, `UnreadMark()`, `Voip()` cho cmd 601.
 - `Unhandled()` + `UnhandledFrames()`: khung/control router chưa xử lý.
+- `DroppedOptionalEvents()`: tin rơi ở kênh tuỳ chọn (xem "Đổi hành vi").
 - `DecodeFailures()` + `*DecodeError{Op, MsgID, Raw, Err}`: tin không giải mã được không còn biến mất im lặng.
 - `events.*`: trường `Errors` / `Err` / `RawData` / `Content` mới; trường cũ giữ nguyên.
 
@@ -21,4 +22,6 @@
 - `Stop()` trong lúc chờ thử lại huỷ lần nối lại.
 - `ZCAError.Error()` in kèm nguyên nhân (cắt 512 byte).
 - Friend action chưa có decoder đi vào `Unhandled()`; control nhóm/bạn bè giải hỏng phát `*DecodeError`.
-- Kênh mới không ai đọc vẫn tính rơi vào `DroppedEvents()` (trừ `Unhandled()`).
+- Kênh tuỳ chọn (`Unhandled`, `UnreadCleared`, `PinConversations`, `UnreadMark`, `Voip`) đầy thì bỏ tin MỚI và
+  đếm vào `DroppedOptionalEvents()`, không vào `DroppedEvents()` — ứng dụng không đọc các kênh này không bị
+  báo động giả. `DroppedEvents()` giờ chỉ là kênh lõi (tin, reaction, undo, nhóm, bạn bè, receipt...).

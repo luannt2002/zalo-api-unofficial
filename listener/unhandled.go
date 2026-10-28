@@ -17,12 +17,8 @@ var unhandledFrames atomic.Int64
 // UnhandledFrames returns how many frames/controls (all listeners) had no handler.
 func UnhandledFrames() int64 { return unhandledFrames.Load() }
 
-// emitUnhandled counts f and offers it on Unhandled(). That channel is optional
-// diagnostics, so a full one drops f without touching DroppedEvents.
+// emitUnhandled counts f and offers it on Unhandled(), an optional channel.
 func (ln *listener) emitUnhandled(f RawFrame) {
 	unhandledFrames.Add(1)
-	select {
-	case ln.ch.Unhandled <- f:
-	default:
-	}
+	offer(ln.ch.Unhandled, f, &droppedOptional)
 }

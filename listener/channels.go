@@ -176,3 +176,21 @@ var droppedEvents atomic.Int64
 
 // DroppedEvents trả tổng số sự kiện đã bị bỏ do kênh đầy (giám sát rớt tin inbound).
 func DroppedEvents() int64 { return droppedEvents.Load() }
+
+// droppedOptional counts events dropped from the optional channels (Unhandled,
+// UnreadCleared, PinConversations, UnreadMark, Voip). Apps that never read them
+// see it grow; that is not message loss, so it stays out of DroppedEvents.
+var droppedOptional atomic.Int64
+
+// DroppedOptionalEvents returns how many events (all listeners) were dropped
+// because an optional channel was full.
+func DroppedOptionalEvents() int64 { return droppedOptional.Load() }
+
+// offer sends v without blocking; a full channel drops v and counts it in drops.
+func offer[T any](ch chan T, v T, drops *atomic.Int64) {
+	select {
+	case ch <- v:
+	default:
+		drops.Add(1)
+	}
+}
