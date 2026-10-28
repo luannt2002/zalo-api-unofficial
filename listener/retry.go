@@ -74,12 +74,14 @@ func (ln *listener) scheduleReconnection(ctx context.Context, ci websocketx.Clos
 		default:
 		}
 
-		if err := ln.Start(ctx, true); err != nil {
-			select {
-			case ln.ch.Closed <- ci:
-			default:
-			}
+		actx, err := ln.start(ctx, true)
+		if err == nil || actx == nil {
+			return // connected, or Stop() / a manual Start got there first
 		}
+		// Still offline: a failed dial counts as a 1006 close, as in the JS
+		// client, so it follows the same retry schedule instead of Closed.
+		ln.emitError(actx, err)
+		ln.handleConnectionClose(actx, websocketx.CloseInfo{Code: ZaloAbnormalClosure, Reason: "dial failed", Err: err}, true)
 	})
 
 	return nil

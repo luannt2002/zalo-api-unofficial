@@ -237,3 +237,87 @@ func TestLifecycle1006CoTran(t *testing.T) {
 		t.Fatal("sau reset phải thử lại được")
 	}
 }
+
+// Máy chủ giả đếm MỌI lượt quay số (kể cả lượt bị từ chối); handle trả false = từ chối nâng cấp
+// (503) ⇒ phía client là lỗi quay số, như mạng còn đứt.
+func startDialCountingWS(t *testing.T, handle func(ctx context.Context, n int32, accept func() *websocket.Conn) bool) (string, *atomic.Int32) {
+	t.Helper()
+	var reqs atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		var c *websocket.Conn
+		accept := func() *websocket.Conn {
+			c, _ = websocket.Accept(w, r, &websocket.AcceptOptions{InsecureSkipVerify: true})
+			return c
+		}
+		if !handle(ctx, reqs.Add(1), accept) {
+			http.Error(w, "down", http.StatusServiceUnavailable)
+		}
+		if c != nil {
+			c.CloseNow()
+		}
+	}))
+	t.Cleanup(srv.Close)
+	return "ws" + strings.TrimPrefix(srv.URL, "http"), &reqs
+}
+
+// P1-b — nối lại mà quay số lỗi (mạng chưa về) phải đi tiếp lịch thử lại, không phát Closed ngay.
+// Kết nối 1 rớt (1006), lượt 2 và 3 bị từ chối, lượt 4 sống ⇒ phải nối lại được.
+func TestLifecycleQuaySoLoiVanTheoLich(t *testing.T) {
+	url, reqs := startDialCountingWS(t, func(ctx context.Context, n int32, accept func() *websocket.Conn) bool {
+		switch n {
+		case 2, 3:
+			return false
+		case 1:
+			accept() // CloseNow ngay ⇒ client thấy 1006
+		default:
+			if c := accept(); c != nil {
+				keepOpen(ctx, c)
+			}
+		}
+		return true
+	})
+	ln := newLiveListener(t, url, retrySettings("1006", 5, 20))
+
+	if err := ln.Start(context.Background(), true); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	waitFor(t, 3*time.Second, "lượt quay số thứ 4 (nối lại sau 2 lần lỗi)", func() bool { return reqs.Load() >= 4 })
+	time.Sleep(200 * time.Millisecond)
+	select {
+	case ci := <-ln.Closed():
+		t.Fatalf("Closed %+v dù lượt 4 đã nối được", ci)
+	default:
+	}
+	if n := reqs.Load(); n != 4 {
+		t.Fatalf("máy chủ nhận %d lượt quay số, mong 4 (đứng yên khi đã nối lại)", n)
+	}
+	if ln.getClient() == nil {
+		t.Fatal("không có kết nối sống sau khi máy chủ bật lại")
+	}
+}
+
+// P1-b — máy chủ tắt hẳn: hết đúng số lượt của lịch (1 + 3) rồi mới Closed, mã 1006.
+func TestLifecycleQuaySoLoiHetLuotMoiClosed(t *testing.T) {
+	url, reqs := startDialCountingWS(t, func(ctx context.Context, n int32, accept func() *websocket.Conn) bool {
+		if n == 1 {
+			accept()
+			return true
+		}
+		return false
+	})
+	ln := newLiveListener(t, url, retrySettings("1006", 3, 20))
+
+	if err := ln.Start(context.Background(), true); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	ci := recvWithin(t, ln.Closed(), 3*time.Second, "Closed sau khi hết lượt")
+	if ci.Code != ZaloAbnormalClosure || ci.Err == nil {
+		t.Fatalf("Closed = %+v, mong 1006 kèm lỗi quay số", ci)
+	}
+	time.Sleep(100 * time.Millisecond)
+	if n := reqs.Load(); n != 4 {
+		t.Fatalf("máy chủ nhận %d lượt quay số, mong 4 (1 + 3 lượt thử lại)", n)
+	}
+}

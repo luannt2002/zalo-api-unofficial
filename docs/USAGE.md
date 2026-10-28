@@ -957,6 +957,9 @@ if errors.Is(err, errs.ErrMissingImageMetadataGetter) {
 - Mất kết nối không có khung đóng được báo là `1006`. Không có lịch từ máy chủ thì `1006` thử lại sau
   2/5/10/20/30/60 s (dao động [d/2, d]), tối đa 8 lần rồi phát `Closed()`. Bộ đếm thử lại chỉ về 0 khi kết
   nối sống ổn ≥ 30 s sau khi nhận khoá. `Stop()` huỷ cả lần nối lại đang chờ.
+- Lượt nối lại mà quay số lỗi (mạng chưa về) cũng tính là `1006`: phát `Error()` (lỗi quay số) +
+  `Disconnected()` rồi chờ lượt kế theo cùng lịch; `Closed()` (mã `1006`, `Err` = lỗi quay số) chỉ tới khi hết
+  lượt. Riêng `Start()` do ứng dụng gọi mà quay số lỗi thì trả lỗi ngay, không tự thử lại.
 - Nếu Zalo bị lỗi phía server, REST call trả `ZaloAPIError`; nên có retry/backoff ở tầng gọi.
 
 ---

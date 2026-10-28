@@ -21,6 +21,9 @@
   Ứng dụng phải xử lý `Closed()` (đăng nhập lại).
 - Bộ đếm thử lại chỉ về 0 sau 30 s kết nối ổn định (trước: ngay khi nhận khoá).
 - `Stop()` trong lúc chờ thử lại huỷ lần nối lại.
+- Nối lại mà quay số lỗi (mạng còn đứt, máy chủ từ chối nâng cấp) tính như một lần đóng `1006`: mỗi lượt phát
+  `Error()` + `Disconnected()` rồi đi tiếp lịch thử lại; chỉ `Closed()` khi hết lượt (trước: `Closed()` ngay lượt
+  quay số lỗi đầu tiên, nên lịch 2/5/10/20/30/60 s × 8 thực tế không chạy khi mạng chưa về).
 - `ZCAError.Error()` in kèm nguyên nhân (cắt 512 byte).
 - Bảo mật: lỗi quay số WebSocket (`*url.Error`) không còn in query của URL ws (mang `zpw_sek` và tham số phiên)
   — giữ scheme+host+path, query thành `?<redacted>`; log "Rotating endpoint" cũng bỏ query. Lưu ý

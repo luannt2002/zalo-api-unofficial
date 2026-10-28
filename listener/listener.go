@@ -140,15 +140,24 @@ func New(sc session.MutableContext, urls []string) (*listener, error) {
 }
 
 func (ln *listener) Start(ctx context.Context, retryOnClose bool) error {
+	_, err := ln.start(ctx, retryOnClose)
+	return err
+}
+
+// start returns the new attempt's context once it has dialed. On a dial error
+// that context stays live as the active one (Stop cancels it), so a reconnect
+// can schedule its next try on it. It returns a nil context when it did not
+// dial: already started, or ctx cancelled.
+func (ln *listener) start(ctx context.Context, retryOnClose bool) (context.Context, error) {
 	ln.mu.Lock()
 	defer ln.mu.Unlock()
 
 	if ln.client != nil {
-		return errs.NewZCA("Already started", "listener.Start")
+		return nil, errs.NewZCA("Already started", "listener.Start")
 	}
 	if ctx.Err() != nil {
 		err := ctx.Err()
-		return errs.WrapZCA("context cancelled", "listener.Start", err)
+		return nil, errs.WrapZCA("context cancelled", "listener.Start", err)
 	}
 
 	// Capture the caller's context once, on the first successful entry. Every
@@ -174,9 +183,7 @@ func (ln *listener) Start(ctx context.Context, retryOnClose bool) error {
 
 	client, err := ln.createWebSocketConnection(lctx)
 	if err != nil {
-		cancel()
-		ln.cancel = nil
-		return err
+		return lctx, err
 	}
 
 	ln.client = client
@@ -189,7 +196,7 @@ func (ln *listener) Start(ctx context.Context, retryOnClose bool) error {
 	ln.wg.Add(1)
 	go ln.run(lctx, retryOnClose)
 
-	return nil
+	return lctx, nil
 }
 
 func (ln *listener) createWebSocketConnection(ctx context.Context) (websocketx.Client, error) {
