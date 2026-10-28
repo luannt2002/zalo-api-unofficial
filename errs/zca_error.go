@@ -2,6 +2,7 @@ package errs
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/luannt2002/zalo-api-unofficial/config"
 )
@@ -29,19 +30,32 @@ type ZCAError struct {
 	Meta    map[string]string
 }
 
+// maxCauseLen caps the cause text appended by Error() so one log line cannot grow unbounded.
+const maxCauseLen = 512
+
 func (e ZCAError) Error() string {
 	base := "ZCAError"
 
+	var s string
 	switch {
 	case e.Message != "" && e.Op != "":
-		return fmt.Sprintf("%s: %s (%s)", base, e.Message, e.Op)
+		s = fmt.Sprintf("%s: %s (%s)", base, e.Message, e.Op)
 	case e.Message != "":
-		return fmt.Sprintf("%s: %s", base, e.Message)
+		s = fmt.Sprintf("%s: %s", base, e.Message)
 	case e.Op != "":
-		return fmt.Sprintf("%s: (%s)", base, e.Op)
+		s = fmt.Sprintf("%s: (%s)", base, e.Op)
 	default:
-		return base
+		s = base
 	}
+
+	if e.Cause == nil {
+		return s
+	}
+	cause := e.Cause.Error()
+	if len(cause) > maxCauseLen {
+		cause = strings.ToValidUTF8(cause[:maxCauseLen], "") + "…"
+	}
+	return s + ": " + cause
 }
 
 func (e ZCAError) Unwrap() error { return e.Cause }
