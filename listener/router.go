@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/luannt2002/zalo-api-unofficial/errs"
+	"github.com/luannt2002/zalo-api-unofficial/internal/jsonx"
 	"github.com/luannt2002/zalo-api-unofficial/internal/logger"
 	"github.com/luannt2002/zalo-api-unofficial/listener/events"
 	"github.com/luannt2002/zalo-api-unofficial/model"
@@ -277,14 +278,14 @@ func (ln *listener) handleClearUnreads(ctx context.Context, body BaseWSMessage, 
 			continue
 		}
 		// Only type 0 is a thread read; type 2 comes with idTo "-1".
-		threadID := rawString(c.IDTo)
-		if rawString(c.Type) != "0" || threadID == "" {
+		threadID := jsonx.ScalarString(c.IDTo)
+		if jsonx.ScalarString(c.Type) != "0" || threadID == "" {
 			continue
 		}
 		items = append(items, model.ClearUnread{
 			Type:      tt,
 			ThreadID:  threadID,
-			LastMsgID: rawString(c.LastMsgID),
+			LastMsgID: jsonx.ScalarString(c.LastMsgID),
 			Data:      raw,
 		})
 	}
@@ -293,21 +294,9 @@ func (ln *listener) handleClearUnreads(ctx context.Context, body BaseWSMessage, 
 	}
 }
 
-// rawString reads a JSON value Zalo sends either as a string or as a bare number.
-func rawString(b json.RawMessage) string {
-	var s string
-	if err := json.Unmarshal(b, &s); err == nil {
-		return s
-	}
-	if len(b) == 0 || string(b) == "null" {
-		return ""
-	}
-	return string(b)
-}
-
 // rawInt reads an integer sent as a string or a number; 0 when absent or not numeric.
 func rawInt(b json.RawMessage) int64 {
-	n, _ := strconv.ParseInt(rawString(b), 10, 64)
+	n, _ := strconv.ParseInt(jsonx.ScalarString(b), 10, 64)
 	return n
 }
 
@@ -530,11 +519,11 @@ func markUnreadIDs(items []json.RawMessage) []string {
 		var obj struct {
 			ID json.RawMessage `json:"id"`
 		}
-		id := rawString(it)
+		id := jsonx.ScalarString(it)
 		if len(it) > 0 && it[0] == '{' {
 			id = ""
 			if json.Unmarshal(it, &obj) == nil {
-				id = rawString(obj.ID)
+				id = jsonx.ScalarString(obj.ID)
 			}
 		}
 		if id != "" {
