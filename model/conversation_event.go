@@ -20,3 +20,11 @@ type UnreadMarkUpdate struct {
 	UserIDs  []string
 	GroupIDs []string
 }
+
+// VoipEvent: call signaling (cmd 601 act_type "voip"). The SDK does not
+// interpret the call protocol; Data is the control data as received, with a
+// string-encoded JSON layer removed.
+type VoipEvent struct {
+	Act  string // e.g. "request", "ring_ring", "answer", "cancel", "end_call"
+	Data json.RawMessage
+}

@@ -55,6 +55,8 @@ type Listener interface {
 	PinConversations() <-chan model.PinConversationsUpdate
 	// Conversations marked/unmarked as unread on another device (cmd 601 "mark_unread").
 	UnreadMark() <-chan model.UnreadMarkUpdate
+	// Call signaling, raw (cmd 601 "voip").
+	Voip() <-chan model.VoipEvent
 
 	SendWS(ctx context.Context, payload WSPayload, requireID bool) error
 
@@ -484,5 +486,6 @@ func initializeChannels() channels {
 		UnreadCleared:     make(chan []model.ClearUnread, buf.UnreadCleared),
 		PinConversations:  make(chan model.PinConversationsUpdate, buf.PinConversations),
 		UnreadMark:        make(chan model.UnreadMarkUpdate, buf.UnreadMark),
+		Voip:              make(chan model.VoipEvent, buf.Voip),
 	}
 }

@@ -2,6 +2,7 @@ package listener
 
 import (
 	"context"
+	"encoding/json"
 	"slices"
 	"testing"
 	"time"
@@ -171,5 +172,31 @@ func TestRouterMarkUnread(t *testing.T) {
 	empty := recvOne(t, ln.UnreadMark())
 	if empty.Action != "add" || len(empty.UserIDs) != 0 || len(empty.GroupIDs) != 0 {
 		t.Fatalf("empty = %+v", empty)
+	}
+}
+
+// cmd 601 act_type "voip": tín hiệu cuộc gọi. SDK không diễn giải giao thức gọi, chỉ chuyển
+// act + data đã bỏ lớp chuỗi JSON để ứng dụng tự đọc.
+func TestRouterVoip(t *testing.T) {
+	ln := newRouterTestListener(t)
+	ln.router(context.Background(), 1, 601, 0, controlFrame(
+		`{"act_type":"voip","act":"request","data":"{\"callId\":123,\"uidFrom\":\"200\",\"params\":{\"Dname\":\"A\"}}"}`,
+		`{"act_type":"voip","act":"end_call","data":{"callId":"124"}}`,
+	))
+
+	first := recvOne(t, ln.Voip())
+	if first.Act != "request" {
+		t.Fatalf("first.Act = %q, mong request", first.Act)
+	}
+	var d struct {
+		CallID int64  `json:"callId"`
+		From   string `json:"uidFrom"`
+	}
+	if err := json.Unmarshal(first.Data, &d); err != nil || d.CallID != 123 || d.From != "200" {
+		t.Fatalf("first.Data = %s (err %v), mong object đã giải chuỗi", first.Data, err)
+	}
+	second := recvOne(t, ln.Voip())
+	if second.Act != "end_call" || string(second.Data) != `{"callId":"124"}` {
+		t.Fatalf("second = {%q %s}", second.Act, second.Data)
 	}
 }

@@ -392,6 +392,8 @@ func (ln *listener) handleControls(ctx context.Context, body BaseWSMessage) {
 			ln.handlePinnedConversations(ctx, content)
 		case "mark_unread":
 			ln.handleMarkUnread(ctx, content)
+		case "voip":
+			emit(ctx, ln.ch.Voip, model.VoipEvent{Act: content.Action, Data: content.RawData})
 		}
 	}
 }
