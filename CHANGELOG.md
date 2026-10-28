@@ -24,6 +24,9 @@
 - Nối lại mà quay số lỗi (mạng còn đứt, máy chủ từ chối nâng cấp) tính như một lần đóng `1006`: mỗi lượt phát
   `Error()` + `Disconnected()` rồi đi tiếp lịch thử lại; chỉ `Closed()` khi hết lượt (trước: `Closed()` ngay lượt
   quay số lỗi đầu tiên, nên lịch 2/5/10/20/30/60 s × 8 thực tế không chạy khi mạng chưa về).
+- `Stop()` rồi `Start()` lại trên kết nối đang sống chạy được (trước: thường báo "Already started" vì client cũ
+  không được dọn). `Stop()` huỷ và đọc client trong cùng một vùng khoá, nên không còn cửa sổ để lần nối lại
+  đang quay số tạo ra một kết nối không ai đóng.
 - `ZCAError.Error()` in kèm nguyên nhân (cắt 512 byte).
 - Bảo mật: lỗi quay số WebSocket (`*url.Error`) không còn in query của URL ws (mang `zpw_sek` và tham số phiên)
   — giữ scheme+host+path, query thành `?<redacted>`; log "Rotating endpoint" cũng bỏ query. Lưu ý

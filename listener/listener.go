@@ -381,11 +381,17 @@ func (ln *listener) handleConnectionClose(ctx context.Context, ci websocketx.Clo
 }
 
 func (ln *listener) Stop() {
-	client := ln.getClient()
-
-	// Always cancel: during a retry backoff client is nil but the pending
-	// reconnect waits on this context, and must not revive a stopped listener.
-	ln.cancelActiveContext()
+	// Cancel and read the client in ONE critical section. A reconnect holds
+	// ln.mu while it dials, so Stop either cancels first (the reconnect then
+	// aborts) or sees the client it made. Always cancel: during a retry backoff
+	// client is nil but the pending reconnect waits on this context.
+	ln.mu.Lock()
+	if ln.cancel != nil {
+		ln.cancel()
+		ln.cancel = nil
+	}
+	client := ln.client
+	ln.mu.Unlock()
 	if client == nil {
 		return
 	}
@@ -393,6 +399,8 @@ func (ln *listener) Stop() {
 	client.Close(ZaloManualClosure, "")
 
 	ln.wg.Wait()
+	// run returns on ctx.Done without reset; clear the client so Start works again.
+	ln.reset()
 }
 
 func (ln *listener) reset() {

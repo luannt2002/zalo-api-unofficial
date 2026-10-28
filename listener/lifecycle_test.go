@@ -321,3 +321,21 @@ func TestLifecycleQuaySoLoiHetLuotMoiClosed(t *testing.T) {
 		t.Fatalf("máy chủ nhận %d lượt quay số, mong 4 (1 + 3 lượt thử lại)", n)
 	}
 }
+
+// Stop() trên kết nối đang sống rồi Start() lại phải được (upstream: stop() → reset() → ws = null).
+// Bản cũ: run thoát theo ctx mà không reset ⇒ client cũ còn đó ⇒ "Already started".
+func TestLifecycleStopRoiStartLai(t *testing.T) {
+	f := startFakeWS(t, func(ctx context.Context, c *websocket.Conn, n int32) { keepOpen(ctx, c) })
+	ln := newLiveListener(t, f.url, nil)
+
+	for i := range 5 {
+		if err := ln.Start(context.Background(), true); err != nil {
+			t.Fatalf("lần %d: Start: %v", i+1, err)
+		}
+		waitFor(t, 3*time.Second, "máy chủ nhận kết nối", func() bool { return f.conns.Load() == int32(i+1) })
+		ln.Stop()
+		if ln.getClient() != nil {
+			t.Fatalf("lần %d: client vẫn còn sau Stop()", i+1)
+		}
+	}
+}
