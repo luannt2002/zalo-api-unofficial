@@ -960,6 +960,8 @@ if errors.Is(err, errs.ErrMissingImageMetadataGetter) {
 - Lượt nối lại mà quay số lỗi (mạng chưa về) cũng tính là `1006`: phát `Error()` (lỗi quay số) +
   `Disconnected()` rồi chờ lượt kế theo cùng lịch; `Closed()` (mã `1006`, `Err` = lỗi quay số) chỉ tới khi hết
   lượt. Riêng `Start()` do ứng dụng gọi mà quay số lỗi thì trả lỗi ngay, không tự thử lại.
+- Sau `Stop()` (đồng bộ: trả về khi listener đã dừng), `Disconnected()` / `Closed()` có thể tới hoặc không — đừng
+  dựa vào chúng để biết đã dừng. (zca-js luôn phát `closed(1000)` sau `stop()`; Go chưa chốt, xem UPSTREAM.json.)
 - Nếu Zalo bị lỗi phía server, REST call trả `ZaloAPIError`; nên có retry/backoff ở tầng gọi.
 
 ---

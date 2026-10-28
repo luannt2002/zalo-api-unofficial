@@ -69,7 +69,8 @@
         "note": "Stop() cancels pending reconnect. Per-callback stale-socket guards not-applicable: Go reads each connection in its own goroutine and Start cancels the previous attempt context (restart-in-backoff test passes on baseline).",
         "tests": [
           "listener/TestLifecycleStopHuyHenGioThuLai",
-          "listener/TestLifecycleKhoiDongLaiTrongLucCho"
+          "listener/TestLifecycleKhoiDongLaiTrongLucCho",
+          "listener/TestLifecycleStopRoiStartLai"
         ]
       },
       {
@@ -77,10 +78,12 @@
         "head": "67f21d6a11deb54938fe747d6dc9102902a364c2",
         "subject": "retry listener on abnormal closure (1006)",
         "status": "partially ported",
-        "note": "Go already retried 1006; now drops map to 1006 and use a bounded schedule (zca-js 2.1.2 community patch). Deferred: rotate endpoint on 1006 with wrap-around, \"reconnecting\" event, \"internal\" retry schedule fallback.",
+        "note": "Go already retried 1006; now drops map to 1006 and use a bounded schedule (zca-js 2.1.2 community patch); a failed reconnect dial counts as 1006 and follows the schedule, as the JS client gets close 1006 for a failed connect. Deferred: rotate endpoint on 1006 with wrap-around, \"reconnecting\" event, \"internal\" retry schedule fallback.",
         "tests": [
           "listener/TestLifecycleMatTCPLa1006",
-          "listener/TestLifecycle1006CoTran"
+          "listener/TestLifecycle1006CoTran",
+          "listener/TestLifecycleQuaySoLoiVanTheoLich",
+          "listener/TestLifecycleQuaySoLoiHetLuotMoiClosed"
         ]
       },
       {
@@ -88,7 +91,7 @@
         "head": "ae0dd31af11daa98810c3a4787edfda4fb3ebbd0",
         "subject": "log only unhandled cmds",
         "status": "ported",
-        "note": "as UnhandledFrames() counter and Unhandled() channel",
+        "note": "as UnhandledFrames() counter and Unhandled() channel; PR closed unmerged upstream (2026-10), Go keeps the counter",
         "tests": [
           "listener/TestUnhandledCmdDemVaLoKhung"
         ]
@@ -98,6 +101,30 @@
         "head": "b6b65baba4209b9f7abf13361c1661270c614cde",
         "subject": "cmd 551 (duplicate of #378)",
         "status": "ported"
+      },
+      {
+        "pr": 391,
+        "head": "a3dffbfacf3bed63a7727b69ab3869085ddccc27",
+        "subject": "emit undo for recalls replayed in old_messages (cmd 510/511)",
+        "status": "ported",
+        "note": "same msgType rule as live messages; undos emitted after OldMessages; selfListen honoured",
+        "tests": [
+          "listener/TestOldMessagesThuHoiThanhUndo"
+        ]
+      },
+      {
+        "pr": 392,
+        "head": "bc7bf0ff9ee8",
+        "subject": "loginQR: clear QR expiry timer at scan",
+        "status": "deferred",
+        "note": "login, not listener"
+      },
+      {
+        "pr": 393,
+        "head": "2283a54a37a8",
+        "subject": "uploadAttachment: stream chunks from disk, reject when socket closes",
+        "status": "deferred",
+        "note": "API, not listener"
       },
       {
         "pr": 382,
@@ -132,6 +159,130 @@
         "status": "deferred"
       }
     ],
-    "community_patch": "zca-js 2.1.2 community patch: cmd 551, 504/524, 601 pinned_convers / mark_unread / voip, listener lifecycle (Stop cancels reconnect, 30 s stable window, 1006 2/5/10/20/30/60 s x8) ported; endpoint rotation on 1006 not ported"
+    "community_patch": "zca-js 2.1.2 community patch: cmd 551, 504/524, 601 pinned_convers / mark_unread / voip, listener lifecycle (Stop cancels reconnect, 30 s stable window, 1006 2/5/10/20/30/60 s x8) ported; endpoint rotation on 1006 not ported; failed reconnect dial follows the 1006 schedule",
+    "open_prs_reviewed_on": "2026-10-28 (GitHub API, open PR list)",
+    "event_coverage": {
+      "note": "every this.emit(...) in src/apis/listen.ts at 0586dc5 plus the zca-js 2.1.2 community patch, mapped to the Go channel",
+      "events": [
+        {
+          "upstream": "connected",
+          "go": "Connected()",
+          "status": "ported"
+        },
+        {
+          "upstream": "disconnected",
+          "go": "Disconnected()",
+          "status": "ported",
+          "note": "also on each failed reconnect dial (code 1006), as the JS client"
+        },
+        {
+          "upstream": "closed",
+          "go": "Closed()",
+          "status": "ported",
+          "note": "differs on manual stop: upstream stop() always ends in disconnected+closed(1000); Go Stop() is synchronous and what follows is a race between ctx cancel and the close frame (measured 2026-10-28: after Stop() on a live connection Closed arrived 3/40, Disconnected 7/40). Not changed: needs an API decision (always emit, or never)"
+        },
+        {
+          "upstream": "error",
+          "go": "Error()",
+          "status": "ported",
+          "note": "first Start() returns its dial error; reconnect dial errors, read errors, decode errors (*DecodeError) go to Error(); overflow counted in DroppedErrors()"
+        },
+        {
+          "upstream": "cipher_key",
+          "go": "CipherKey()",
+          "status": "ported"
+        },
+        {
+          "upstream": "message (501/551/521)",
+          "go": "Message()",
+          "status": "ported"
+        },
+        {
+          "upstream": "undo (501/551/521; 510/511 via PR #391)",
+          "go": "Undo()",
+          "status": "ported",
+          "note": "undo = msgType chat.undo; upstream checks content.deleteMsg"
+        },
+        {
+          "upstream": "upload_attachment (601 file_done)",
+          "go": "UploadAttachment() + UploadCallback",
+          "status": "ported"
+        },
+        {
+          "upstream": "group_event (601 group)",
+          "go": "Group()",
+          "status": "ported",
+          "note": "join_reject ignored as upstream"
+        },
+        {
+          "upstream": "friend_event (601 fr)",
+          "go": "Friend()",
+          "status": "ported",
+          "note": "req ignored as upstream; acts without decoder go to Unhandled()"
+        },
+        {
+          "upstream": "reaction (612)",
+          "go": "Reaction()",
+          "status": "ported"
+        },
+        {
+          "upstream": "old_reactions (610/611)",
+          "go": "OldReactions()",
+          "status": "ported",
+          "note": "thread type from cmd"
+        },
+        {
+          "upstream": "old_messages (510/511)",
+          "go": "OldMessages()",
+          "status": "ported",
+          "note": "511 as GroupMessage, thread type from cmd"
+        },
+        {
+          "upstream": "typing (602)",
+          "go": "Typing()",
+          "status": "ported",
+          "note": "lenient decode; other 602 actions go to Unhandled()"
+        },
+        {
+          "upstream": "delivered_messages (502/522)",
+          "go": "DeliveredMessages()",
+          "status": "ported"
+        },
+        {
+          "upstream": "seen_messages (502/522)",
+          "go": "SeenMessages()",
+          "status": "ported"
+        },
+        {
+          "upstream": "unread_cleared (504/524, patch + PR #380)",
+          "go": "UnreadCleared()",
+          "status": "ported"
+        },
+        {
+          "upstream": "pin_conversations_update (601 pinned_convers, patch)",
+          "go": "PinConversations()",
+          "status": "ported"
+        },
+        {
+          "upstream": "unread_mark_update (601 mark_unread, patch)",
+          "go": "UnreadMark()",
+          "status": "ported"
+        },
+        {
+          "upstream": "voip_event (601 voip, patch)",
+          "go": "Voip()",
+          "status": "ported",
+          "note": "raw act + data; the patch parses with an external module that is not part of the patch"
+        }
+      ],
+      "go_only": [
+        "Unhandled() + UnhandledFrames()",
+        "DecodeFailures()",
+        "DroppedEvents()",
+        "DroppedOptionalEvents()",
+        "DroppedErrors()"
+      ],
+      "routing_difference": "Go matches version 1 and the exact subCmd (612_0, 610_1, 611_1...); upstream accepts any subCmd for 610/611/612. Other subCmds reach Unhandled() and are counted."
+    }
   }
 }
