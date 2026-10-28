@@ -395,19 +395,23 @@ func (ln *listener) handleActions(ctx context.Context, body BaseWSMessage) {
 	}
 
 	for _, action := range eventData.Data.Actions {
-		switch action.ActionType {
-		case "typing":
-			// Always triggered by others; no self-check needed
-			switch action.Action {
-			case "typing":
-				typingObject := model.NewUserTyping(action.Data.Typing)
-				emit(ctx, ln.ch.Typing, model.Typing(typingObject))
-			case "gtyping":
-				typingObject := model.NewGroupTyping(action.Data.GroupTyping)
-				emit(ctx, ln.ch.Typing, model.Typing(typingObject))
-			}
-		default:
+		unhandled := RawFrame{Version: 1, CMD: 602, ActType: action.ActionType, Act: action.Action, Data: action.Data.Raw}
+		if action.ActionType != "typing" {
+			ln.emitUnhandled(unhandled)
 			continue
+		}
+		if action.Data.Err != nil {
+			ln.emitItemErrors(ctx, "listener.handleActions", []events.ItemError{*action.Data.Err})
+			continue
+		}
+		// Always triggered by others; no self-check needed
+		switch action.Action {
+		case "typing":
+			emit(ctx, ln.ch.Typing, model.Typing(model.NewUserTyping(action.Data.Typing)))
+		case "gtyping":
+			emit(ctx, ln.ch.Typing, model.Typing(model.NewGroupTyping(action.Data.GroupTyping)))
+		default:
+			ln.emitUnhandled(unhandled)
 		}
 	}
 }

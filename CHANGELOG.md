@@ -38,6 +38,9 @@
   ThreadID = người gửi — ứng dụng nào đang tự sửa thread = `idTo` phải bỏ phần sửa đó.
 - `OldMessages` / `OldReactions` lấy loại thread theo cmd (510/610 = 1-1, 511/611 = nhóm), không đoán theo payload
   (trước: lô nhóm rỗng bị báo là 1-1). Thu hồi không còn lẫn trong `OldMessages.Messages`.
+- Typing (cmd 602) giải khoan dung như tin (vd `isPC` dạng chuỗi, `gid` dạng số); không giải được thì phát
+  `*DecodeError` thay vì một typing rỗng (UID `""`). Hành động 602 khác typing / typing lạ đi vào `Unhandled()`
+  (trước: bỏ im lặng).
 - `events.OldMessagesEventData` đổi kiểu trường (giải từng tin như tin sống) và bỏ `Errors`; gói `events` là
   phần giải mã nội bộ của listener.
 - Kênh tuỳ chọn (`Unhandled`, `UnreadCleared`, `PinConversations`, `UnreadMark`, `Voip`) đầy thì bỏ tin MỚI và
