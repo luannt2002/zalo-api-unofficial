@@ -31,3 +31,22 @@ func TestScalarString(t *testing.T) {
 		}
 	}
 }
+
+// Chuỗi rỗng / chỉ khoảng trắng ở trường số thành 0, như Number("") / Number("  ") của JS (zca-js
+// đọc các trường này không ép kiểu, Zalo có lúc gửi ""). Khoảng trắng hai đầu số bị bỏ như Number(" 12 ").
+func TestUnmarshalLenientChuoiRongThanh0(t *testing.T) {
+	for raw, want := range map[string]int{`{"n":""}`: 0, `{"n":"   "}`: 0, `{"n":"\t\n"}`: 0, `{"n":" 12 "}`: 12} {
+		v := struct {
+			N int `json:"n"`
+		}{N: -1}
+		if err := UnmarshalLenient([]byte(raw), &v); err != nil || v.N != want {
+			t.Errorf("UnmarshalLenient(%s) = (%d, %v), mong (%d, nil)", raw, v.N, err, want)
+		}
+	}
+	var f struct {
+		F float64 `json:"f"`
+	}
+	if err := UnmarshalLenient([]byte(`{"f":""}`), &f); err != nil || f.F != 0 {
+		t.Errorf("float rỗng = (%v, %v), mong (0, nil)", f.F, err)
+	}
+}

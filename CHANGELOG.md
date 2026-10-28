@@ -16,6 +16,7 @@
 ### Đổi hành vi
 - Giải mã từng tin trong lô: một tin hỏng chỉ mất tin đó (trước: mất cả lô hoặc mất im lặng).
 - Trường vô hướng nhận cả số lẫn chuỗi (vd `quote.ownerId`); quote thiếu `ownerId` giờ là `""` thay vì `"0"`.
+  Trường số nhận `""` / chỉ khoảng trắng thành `0` (như `Number("")` của JS); chuỗi không phải số vẫn báo lỗi.
 - Mất TCP không khung đóng báo `1006` thay vì `1011`.
 - `1006` không có lịch từ máy chủ: tối đa 8 lần (2/5/10/20/30/60 s) rồi `Closed()` (trước: thử lại vô hạn).
   Ứng dụng phải xử lý `Closed()` (đăng nhập lại).
