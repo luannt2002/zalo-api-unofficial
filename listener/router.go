@@ -19,7 +19,7 @@ func (ln *listener) router(ctx context.Context, version, cmd, sub uint, body Bas
 	case "1_1_1":
 		ln.handleCipherKey(ctx, body)
 
-	case "1_501_0":
+	case "1_501_0", "1_551_0": // 551 carries 1-1 messages like 501 (upstream PR #378)
 		ln.handleMessages(ctx, body)
 
 	case "1_502_0":
