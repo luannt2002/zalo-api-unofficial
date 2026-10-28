@@ -107,13 +107,16 @@ func (ln *listener) handleCipherKey(ctx context.Context, body BaseWSMessage) {
 func (ln *listener) handleMessages(ctx context.Context, body BaseWSMessage) {
 	eventData, err := decodeEventData[events.MessageEventData](body, ln.cipherKey)
 	if err != nil {
-		err = errs.WrapZCA("Failed to decode event data:", "listener.handleMessages", err)
-		ln.emitError(ctx, err)
+		ln.emitDecodeFailure(ctx, errs.WrapZCA("Failed to decode event data:", "listener.handleMessages", err))
 		return
 	}
 
 	uid := ln.sc.UID()
 	for _, msg := range eventData.Data.Msgs {
+		if msg.Err != nil {
+			ln.emitItemErrors(ctx, "listener.handleMessages", []events.ItemError{*msg.Err})
+			continue
+		}
 		if msg.Undo != nil {
 			undo := model.NewUndo(uid, *msg.Undo, false)
 			if undo.IsSelf && !ln.selfListen {
@@ -133,8 +136,7 @@ func (ln *listener) handleMessages(ctx context.Context, body BaseWSMessage) {
 func (ln *listener) handleOldMessages(ctx context.Context, body BaseWSMessage) {
 	eventData, err := decodeEventData[events.OldMessagesEventData](body, ln.cipherKey)
 	if err != nil {
-		err = errs.WrapZCA("Failed to decode event data:", "listener.handleOldMessages", err)
-		ln.emitError(ctx, err)
+		ln.emitDecodeFailure(ctx, errs.WrapZCA("Failed to decode event data:", "listener.handleOldMessages", err))
 		return
 	}
 
@@ -153,14 +155,17 @@ func (ln *listener) handleOldMessages(ctx context.Context, body BaseWSMessage) {
 		messages = append(messages, messageObject)
 	}
 
+	ln.emitItemErrors(ctx, "listener.handleOldMessages", eventData.Data.Errors)
+	if len(messages) == 0 && len(eventData.Data.Errors) > 0 {
+		return // nothing decoded; an empty batch would also carry a guessed thread type
+	}
 	emit(ctx, ln.ch.OldMessages, model.NewOldMessage(messages, threadType))
 }
 
 func (ln *listener) handleMessagesStatus(ctx context.Context, body BaseWSMessage) {
 	eventData, err := decodeEventData[events.MessageStatusEventData](body, ln.cipherKey)
 	if err != nil {
-		err = errs.WrapZCA("Failed to decode event data:", "listener.handleMessagesStatus", err)
-		ln.emitError(ctx, err)
+		ln.emitDecodeFailure(ctx, errs.WrapZCA("Failed to decode event data:", "listener.handleMessagesStatus", err))
 		return
 	}
 
@@ -184,12 +189,15 @@ func (ln *listener) handleMessagesStatus(ctx context.Context, body BaseWSMessage
 func (ln *listener) handleGroupMessages(ctx context.Context, body BaseWSMessage) {
 	eventData, err := decodeEventData[events.GroupMessageEventData](body, ln.cipherKey)
 	if err != nil {
-		err = errs.WrapZCA("Failed to decode event data:", "listener.handleGroupMessages", err)
-		ln.emitError(ctx, err)
+		ln.emitDecodeFailure(ctx, errs.WrapZCA("Failed to decode event data:", "listener.handleGroupMessages", err))
 		return
 	}
 
 	for _, msg := range eventData.Data.GroupMsgs {
+		if msg.Err != nil {
+			ln.emitItemErrors(ctx, "listener.handleGroupMessages", []events.ItemError{*msg.Err})
+			continue
+		}
 		if msg.Undo != nil {
 			undo := model.NewUndo(ln.sc.UID(), *msg.Undo, true)
 			if undo.IsSelf && !ln.selfListen {
@@ -209,8 +217,7 @@ func (ln *listener) handleGroupMessages(ctx context.Context, body BaseWSMessage)
 func (ln *listener) handleGroupMessagesStatus(ctx context.Context, body BaseWSMessage) {
 	eventData, err := decodeEventData[events.GroupMessageStatusEventData](body, ln.cipherKey)
 	if err != nil {
-		err = errs.WrapZCA("Failed to decode event data:", "listener.handleGroupMessagesStatus", err)
-		ln.emitError(ctx, err)
+		ln.emitDecodeFailure(ctx, errs.WrapZCA("Failed to decode event data:", "listener.handleGroupMessagesStatus", err))
 		return
 	}
 
@@ -243,7 +250,7 @@ func (ln *listener) handleGroupMessagesStatus(ctx context.Context, body BaseWSMe
 func (ln *listener) handleClearUnreads(ctx context.Context, body BaseWSMessage, tt model.ThreadType) {
 	eventData, err := decodeEventData[events.ClearUnreadEventData](body, ln.cipherKey)
 	if err != nil {
-		ln.emitError(ctx, errs.WrapZCA("Failed to decode event data:", "listener.handleClearUnreads", err))
+		ln.emitDecodeFailure(ctx, errs.WrapZCA("Failed to decode event data:", "listener.handleClearUnreads", err))
 		return
 	}
 
@@ -255,7 +262,7 @@ func (ln *listener) handleClearUnreads(ctx context.Context, body BaseWSMessage, 
 			LastMsgID json.RawMessage `json:"lastMsgId"`
 		}
 		if err := json.Unmarshal(raw, &c); err != nil {
-			ln.emitError(ctx, errs.WrapZCA("Failed to decode clearUnreads item:", "listener.handleClearUnreads", err))
+			ln.emitItemErrors(ctx, "listener.handleClearUnreads", []events.ItemError{{Raw: raw, Err: err}})
 			continue
 		}
 		// Only type 0 is a thread read; type 2 comes with idTo "-1".
@@ -296,10 +303,11 @@ func rawInt(b json.RawMessage) int64 {
 func (ln *listener) handleReactions(ctx context.Context, body BaseWSMessage) {
 	eventData, err := decodeEventData[events.ReactionEventData](body, ln.cipherKey)
 	if err != nil {
-		err = errs.WrapZCA("Failed to decode event data:", "listener.handleReaction", err)
-		ln.emitError(ctx, err)
+		ln.emitDecodeFailure(ctx, errs.WrapZCA("Failed to decode event data:", "listener.handleReaction", err))
 		return
 	}
+
+	ln.emitItemErrors(ctx, "listener.handleReactions", eventData.Data.Errors)
 
 	uid := ln.sc.UID()
 	for _, r := range eventData.Data.Reactions {
@@ -321,8 +329,7 @@ func (ln *listener) handleReactions(ctx context.Context, body BaseWSMessage) {
 func (ln *listener) handleOldReactions(ctx context.Context, body BaseWSMessage) {
 	eventData, err := decodeEventData[events.ReactionEventData](body, ln.cipherKey)
 	if err != nil {
-		err = errs.WrapZCA("Failed to decode event data", "listener.handleOldReactions", err)
-		ln.emitError(ctx, err)
+		ln.emitDecodeFailure(ctx, errs.WrapZCA("Failed to decode event data", "listener.handleOldReactions", err))
 		return
 	}
 
@@ -341,14 +348,17 @@ func (ln *listener) handleOldReactions(ctx context.Context, body BaseWSMessage) 
 		reactions = append(reactions, reactionObject)
 	}
 
+	ln.emitItemErrors(ctx, "listener.handleOldReactions", eventData.Data.Errors)
+	if len(reactions) == 0 && len(eventData.Data.Errors) > 0 {
+		return
+	}
 	emit(ctx, ln.ch.OldReactions, model.NewOldReactions(reactions, threadType))
 }
 
 func (ln *listener) handleActions(ctx context.Context, body BaseWSMessage) {
 	eventData, err := decodeEventData[events.ActionEventData](body, ln.cipherKey)
 	if err != nil {
-		err = errs.WrapZCA("Failed to decode event data:", "listener.handleActions", err)
-		ln.emitError(ctx, err)
+		ln.emitDecodeFailure(ctx, errs.WrapZCA("Failed to decode event data:", "listener.handleActions", err))
 		return
 	}
 
@@ -373,8 +383,7 @@ func (ln *listener) handleActions(ctx context.Context, body BaseWSMessage) {
 func (ln *listener) handleControls(ctx context.Context, body BaseWSMessage) {
 	eventData, err := decodeEventData[events.ControlEventData](body, ln.cipherKey)
 	if err != nil {
-		err = errs.WrapZCA("Failed to decode event data:", "listener.handleControls", err)
-		ln.emitError(ctx, err)
+		ln.emitDecodeFailure(ctx, errs.WrapZCA("Failed to decode event data:", "listener.handleControls", err))
 		return
 	}
 
@@ -460,7 +469,7 @@ func (ln *listener) handlePinnedConversations(ctx context.Context, content event
 		TS     json.RawMessage `json:"ts"`
 	}
 	if err := json.Unmarshal(content.RawData, &d); err != nil {
-		ln.emitError(ctx, errs.WrapZCA("Failed to decode pinned_convers data:", "listener.handlePinnedConversations", err))
+		ln.emitDecodeFailure(ctx, errs.WrapZCA("Failed to decode pinned_convers data:", "listener.handlePinnedConversations", err))
 		return
 	}
 	emit(ctx, ln.ch.PinConversations, model.PinConversationsUpdate{
@@ -479,7 +488,7 @@ func (ln *listener) handleMarkUnread(ctx context.Context, content events.Control
 	}
 	if len(content.Content) > 0 {
 		if err := json.Unmarshal(content.Content, &d); err != nil {
-			ln.emitError(ctx, errs.WrapZCA("Failed to decode mark_unread content:", "listener.handleMarkUnread", err))
+			ln.emitDecodeFailure(ctx, errs.WrapZCA("Failed to decode mark_unread content:", "listener.handleMarkUnread", err))
 			return
 		}
 	}

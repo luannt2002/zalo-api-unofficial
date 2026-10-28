@@ -10,6 +10,8 @@ import (
 type ReactionEventData struct {
 	Reactions      []model.TReaction
 	GroupReactions []model.TReaction
+	// Errors lists items that could not be decoded; the others are kept.
+	Errors []ItemError
 }
 
 func (m *ReactionEventData) UnmarshalJSON(data []byte) error {
@@ -21,29 +23,30 @@ func (m *ReactionEventData) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	reactions, err := unmarshalReactions(raw.Reacts)
+	reactions, errs1, err := unmarshalReactions(raw.Reacts)
 	if err != nil {
 		return err
 	}
-	groupReactions, err := unmarshalReactions(raw.ReactGroups)
+	groupReactions, errs2, err := unmarshalReactions(raw.ReactGroups)
 	if err != nil {
 		return err
 	}
 
 	m.Reactions = reactions
 	m.GroupReactions = groupReactions
+	m.Errors = append(errs1, errs2...)
 	return nil
 }
 
-func unmarshalReactions(b json.RawMessage) ([]model.TReaction, error) {
+func unmarshalReactions(b json.RawMessage) ([]model.TReaction, []ItemError, error) {
 	if len(b) == 0 || string(b) == "null" {
-		return nil, nil
+		return nil, nil, nil
 	}
 
 	var items []json.RawMessage
 	if len(b) > 0 && b[0] == '[' {
 		if err := json.Unmarshal(b, &items); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	} else {
 		items = []json.RawMessage{b}
@@ -52,6 +55,7 @@ func unmarshalReactions(b json.RawMessage) ([]model.TReaction, error) {
 	type alias model.TReaction
 
 	out := make([]model.TReaction, 0, len(items))
+	var bad []ItemError
 	for _, it := range items {
 		var r model.TReaction
 		aux := &struct {
@@ -62,7 +66,8 @@ func unmarshalReactions(b json.RawMessage) ([]model.TReaction, error) {
 		}
 
 		if err := jsonx.UnmarshalLenient(it, aux); err != nil {
-			return nil, err
+			bad = append(bad, newItemError(it, err))
+			continue
 		}
 
 		if aux.Content == "" {
@@ -70,7 +75,8 @@ func unmarshalReactions(b json.RawMessage) ([]model.TReaction, error) {
 		} else {
 			var content model.ReactionContent
 			if err := jsonx.UnmarshalLenient([]byte(aux.Content), &content); err != nil {
-				return nil, err
+				bad = append(bad, newItemError(it, err))
+				continue
 			}
 
 			r.Content = content
@@ -78,5 +84,5 @@ func unmarshalReactions(b json.RawMessage) ([]model.TReaction, error) {
 
 		out = append(out, r)
 	}
-	return out, nil
+	return out, bad, nil
 }

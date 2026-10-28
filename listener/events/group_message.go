@@ -12,6 +12,8 @@ type GroupMessageEventData struct {
 type groupMessageOrUndo struct {
 	Message *model.TGroupMessage
 	Undo    *model.TUndo
+	// Err is set (and Message/Undo are nil) when the item could not be decoded.
+	Err *ItemError
 }
 
 func (m *groupMessageOrUndo) UnmarshalJSON(data []byte) error {
@@ -21,10 +23,16 @@ func (m *groupMessageOrUndo) UnmarshalJSON(data []byte) error {
 		return nil
 	}
 	var tm model.TGroupMessage
-	if err := jsonx.UnmarshalLenient(data, &tm); err == nil && tm.MsgID != "" {
+	err := jsonx.UnmarshalLenient(data, &tm)
+	if err == nil && tm.MsgID != "" {
 		m.Message = &tm
 		return nil
 	}
-
+	if err == nil {
+		err = errNoMsgID
+	}
+	// Keep the batch decodable; the listener reports this item instead of dropping it silently.
+	ie := newItemError(data, err)
+	m.Err = &ie
 	return nil
 }
