@@ -226,6 +226,15 @@ Các kênh đầy đủ trên `Listener`:
 | `Friend()` | `<-chan model.FriendEvent` | Sự kiện bạn bè |
 | `Group()` | `<-chan model.GroupEvent` | Sự kiện nhóm |
 | `CipherKey()` | `<-chan string` | Khóa mã hóa |
+| `UnreadCleared()` | `<-chan []model.ClearUnread` | Hội thoại đã đọc ở thiết bị khác (cmd 504/524) |
+| `PinConversations()` | `<-chan model.PinConversationsUpdate` | Ghim/bỏ ghim hội thoại ở sidebar (601 `pinned_convers`) |
+| `UnreadMark()` | `<-chan model.UnreadMarkUpdate` | Đánh dấu/bỏ đánh dấu chưa đọc ở thiết bị khác (601 `mark_unread`) |
+| `Voip()` | `<-chan model.VoipEvent` | Tín hiệu cuộc gọi thô (601 `voip`) |
+| `Unhandled()` | `<-chan listener.RawFrame` | Khung/control router chưa xử lý (chẩn đoán; đầy thì bỏ, không tính vào `DroppedEvents`) |
+
+Bộ đếm toàn tiến trình: `listener.DroppedEvents()` (rơi vì kênh đầy), `listener.DecodeFailures()` (tin/khung
+không giải mã được — tin hỏng bị bỏ, phần còn lại của lô vẫn tới, lỗi `*listener.DecodeError` kèm `MsgID` và
+`Raw` cắt ngắn phát trên `Error()`), `listener.UnhandledFrames()` (cmd/act_type chưa có handler).
 
 Hàm bổ sung:
 
@@ -936,6 +945,9 @@ if errors.Is(err, errs.ErrMissingImageMetadataGetter) {
   `listener/listener.go`): `1000` đóng thủ công, `1006` bất thường, `3000` trùng kết nối, `3003` bị kick.
 - Đặt `Start(ctx, true)` để **tự kết nối lại** theo cấu hình retry của Zalo. Khi `Closed()` phát tín hiệu
   nghĩa là đã hết retry → cần đăng nhập/khởi động lại.
+- Mất kết nối không có khung đóng được báo là `1006`. Không có lịch từ máy chủ thì `1006` thử lại sau
+  2/5/10/20/30/60 s (dao động [d/2, d]), tối đa 8 lần rồi phát `Closed()`. Bộ đếm thử lại chỉ về 0 khi kết
+  nối sống ổn ≥ 30 s sau khi nhận khoá. `Stop()` huỷ cả lần nối lại đang chờ.
 - Nếu Zalo bị lỗi phía server, REST call trả `ZaloAPIError`; nên có retry/backoff ở tầng gọi.
 
 ---

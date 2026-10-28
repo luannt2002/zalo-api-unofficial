@@ -2,11 +2,136 @@
   "upstream_repository": "https://github.com/RFS-ADRENO/zca-js",
   "last_documented_baseline": "54df45d803fad7397eca04b2753cc0a894dc6e86",
   "baseline_evidence": "luannt-2002/zalo-crm docs/INVENTORY.md at 362cdb96b5d33e2147b80629d702baa8fb8de378; referenced ZCA-JS-BASELINE.md is absent",
-  "upstream_head_observed": "dadfef18bcac53537741855c99f084152da1fad9",
-  "observed_on": "2026-10-08",
+  "upstream_head_observed": "0586dc5e4981985c5f16b9b3a5f285a02feb6f9b",
+  "observed_on": "2026-10-28",
   "verified_complete_parity_commit": null,
   "source_repository": "https://github.com/luannt-2002/zalo-crm",
   "source_commit": "362cdb96b5d33e2147b80629d702baa8fb8de378",
   "source_subtree": "zalo-be-library",
-  "status": "Historical baseline documented; later upstream changes are not yet audited/ported."
+  "status": "Listener and event models audited from baseline to upstream_head_observed (listener_audit); other API changes after baseline are listed but not ported. Complete parity not verified.",
+  "listener_audit": {
+    "range": "54df45d803fad7397eca04b2753cc0a894dc6e86..0586dc5e4981985c5f16b9b3a5f285a02feb6f9b",
+    "audited_on": "2026-10-28",
+    "scope": "src/apis/listen.ts and event models; other files only classified",
+    "merged_commits": [
+      {
+        "sha": "50b40b6, 9ccc332, c92d072, d22c28f",
+        "pr": 378,
+        "subject": "handle cmd 551 in listen",
+        "status": "ported",
+        "tests": [
+          "listener/TestRouterCmd551LaTinMotMot"
+        ]
+      },
+      {
+        "sha": "d04282c",
+        "pr": 327,
+        "subject": "add new apis (bank accounts, getListDevice, lostFocus, registerCatalog, scanURL; API_VERSION 671->685)",
+        "status": "deferred",
+        "note": "not listener; Go config.DefaultAPIVersion is 665, wire constant change needs its own audit"
+      },
+      {
+        "sha": "dadfef1",
+        "subject": "bump to v2.2.0",
+        "status": "not-applicable",
+        "note": "npm version only"
+      },
+      {
+        "sha": "5a93a0e, 0586dc5",
+        "pr": 381,
+        "subject": "addReaction: throw on invalid thread type",
+        "status": "deferred",
+        "note": "not listener"
+      },
+      {
+        "sha": "955b3b6, 0e9cb96, 0e93153, 4d91228, d9186d8, 9479746",
+        "subject": "dependabot: ws, js-yaml, form-data",
+        "status": "not-applicable",
+        "note": "JS dependencies"
+      }
+    ],
+    "open_prs_reviewed": [
+      {
+        "pr": 380,
+        "head": "8ec8989cf8a054ebe87c7e42dfb1302c4f45efa5",
+        "subject": "listener unread_cleared (cmd 504/524)",
+        "status": "ported",
+        "tests": [
+          "listener/TestRouterUnreadCleared",
+          "listener/TestRouterUnreadClearedKhongPhatKhiRong"
+        ]
+      },
+      {
+        "pr": 387,
+        "head": "9bcc631e51017ad19c7bd78d720d3a5f2f74e107",
+        "subject": "cancel reconnects, discard stale socket callbacks",
+        "status": "ported",
+        "note": "Stop() cancels pending reconnect. Per-callback stale-socket guards not-applicable: Go reads each connection in its own goroutine and Start cancels the previous attempt context (restart-in-backoff test passes on baseline).",
+        "tests": [
+          "listener/TestLifecycleStopHuyHenGioThuLai",
+          "listener/TestLifecycleKhoiDongLaiTrongLucCho"
+        ]
+      },
+      {
+        "pr": 371,
+        "head": "67f21d6a11deb54938fe747d6dc9102902a364c2",
+        "subject": "retry listener on abnormal closure (1006)",
+        "status": "partially ported",
+        "note": "Go already retried 1006; now drops map to 1006 and use a bounded schedule (zca-js 2.1.2 community patch). Deferred: rotate endpoint on 1006 with wrap-around, \"reconnecting\" event, \"internal\" retry schedule fallback.",
+        "tests": [
+          "listener/TestLifecycleMatTCPLa1006",
+          "listener/TestLifecycle1006CoTran"
+        ]
+      },
+      {
+        "pr": 384,
+        "head": "ae0dd31af11daa98810c3a4787edfda4fb3ebbd0",
+        "subject": "log only unhandled cmds",
+        "status": "ported",
+        "note": "as UnhandledFrames() counter and Unhandled() channel",
+        "tests": [
+          "listener/TestUnhandledCmdDemVaLoKhung"
+        ]
+      },
+      {
+        "pr": 377,
+        "head": "b6b65baba4209b9f7abf13361c1661270c614cde",
+        "subject": "cmd 551 (duplicate of #378)",
+        "status": "ported"
+      },
+      {
+        "pr": 382,
+        "head": "a397c9fd359f9366d5e0c25a2807bba60087f162",
+        "subject": "uploadAttachment timeout when listener misses file_done",
+        "status": "deferred",
+        "note": "API, not listener"
+      },
+      {
+        "pr": 383,
+        "subject": "deprecate message ttl",
+        "status": "deferred"
+      },
+      {
+        "pr": 388,
+        "subject": "sendMessage styles with image attachments",
+        "status": "deferred"
+      },
+      {
+        "pr": 389,
+        "subject": "sendCustomSticker / default URL version params",
+        "status": "deferred"
+      },
+      {
+        "pr": 370,
+        "subject": "getGroupChatHistory via getrecentv2",
+        "status": "deferred"
+      },
+      {
+        "pr": 375,
+        "subject": "sticker detail revert",
+        "status": "deferred"
+      }
+    ],
+    "community_patch": "zca-js 2.1.2 community patch: cmd 551, 504/524, 601 pinned_convers / mark_unread / voip, listener lifecycle (Stop cancels reconnect, 30 s stable window, 1006 2/5/10/20/30/60 s x8) ported; endpoint rotation on 1006 not ported"
+  }
 }

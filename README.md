@@ -16,7 +16,7 @@ Version ban đầu `v0.1.0` là release thử nghiệm của bản tách; root p
 
 ## Mốc zca-js và parity
 
-Mốc lịch sử trong inventory nguồn: [`54df45d803fad7397eca04b2753cc0a894dc6e86`](https://github.com/RFS-ADRENO/zca-js/commit/54df45d803fad7397eca04b2753cc0a894dc6e86), commit ngày12/04/2026. Upstream HEAD quan sát08/10/2026 là [`dadfef18bcac53537741855c99f084152da1fad9`](https://github.com/RFS-ADRENO/zca-js/commit/dadfef18bcac53537741855c99f084152da1fad9), ngày09/09/2026, bump v2.2.0.
+Mốc lịch sử trong inventory nguồn: [`54df45d803fad7397eca04b2753cc0a894dc6e86`](https://github.com/RFS-ADRENO/zca-js/commit/54df45d803fad7397eca04b2753cc0a894dc6e86), commit ngày12/04/2026. Upstream HEAD quan sát 28/10/2026 là [`0586dc5e4981985c5f16b9b3a5f285a02feb6f9b`](https://github.com/RFS-ADRENO/zca-js/commit/0586dc5e4981985c5f16b9b3a5f285a02feb6f9b) (merge PR #381, 13/10/2026); listener đã audit tới mốc này, xem `listener_audit` trong UPSTREAM.json.
 
 **Không khẳng định toàn fork đã đồng bộ đầy đủ tới baseline hoặc HEAD:** file baseline riêng hiện thiếu, inventory là chứng cứ lịch sử và test parity toàn diện chưa có. Các thay đổi sau baseline phải audit tiếp. [UPSTREAM.json](UPSTREAM.json) phân biệt documented baseline, HEAD quan sát và verified parity (hiện null). [Provenance](SOURCE-PROVENANCE.md).
 

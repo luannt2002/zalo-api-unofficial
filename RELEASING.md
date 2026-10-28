@@ -8,7 +8,7 @@
 
 ## Đồng bộ một lượt
 
-Clone/fetch RFS-ADRENO/zca-js vào checkout riêng. Diff từ documented baseline54df45d803fad7397eca04b2753cc0a894dc6e86 tới target commit; HEAD hiện quan sát là dadfef18bcac53537741855c99f084152da1fad9. Review theo API/protocol, không merge TypeScript vào Go. Mapping trạng thái từng thay đổi: supported/ported/tested/deferred/not-applicable; ghi SHA và tests. Không tăng mốc complete parity nếu còn thiếu phần không được giải thích.
+Clone/fetch RFS-ADRENO/zca-js vào checkout riêng. Diff từ documented baseline54df45d803fad7397eca04b2753cc0a894dc6e86 tới target commit; HEAD hiện quan sát là 0586dc5e4981985c5f16b9b3a5f285a02feb6f9b (28/10/2026). Review theo API/protocol, không merge TypeScript vào Go. Mapping trạng thái từng thay đổi: supported/ported/tested/deferred/not-applicable; ghi SHA và tests. Không tăng mốc complete parity nếu còn thiếu phần không được giải thích.
 
 Sửa endpoint/payload/response/error semantics trong Go, tests trước code; giữ websocket patches. Chạy GOMAXPROCS=2 go build -p 2 ./..., go vet -p 2 ./..., go test -race -p 2 -timeout 120s ./.... Review độc lập, ghi bằng chứng thật, không tự login account hoặc publish ngoài quyền user.
 
