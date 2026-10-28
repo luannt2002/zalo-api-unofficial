@@ -200,3 +200,19 @@ func TestLifecycleSocketOnDinhThiXoaBoDem(t *testing.T) {
 	default:
 	}
 }
+
+// Ca 4 — mất TCP không có khung đóng là 1006 (RFC 6455 §7.1.5), không phải 1011. Bản cũ báo
+// 1011 nên lịch thử lại dành cho 1006 không bao giờ chạy với lần đứt mạng thật.
+func TestLifecycleMatTCPLa1006(t *testing.T) {
+	f := startFakeWS(t, func(ctx context.Context, c *websocket.Conn, n int32) {
+		c.CloseNow()
+	})
+	ln := newLiveListener(t, f.url, nil)
+
+	if err := ln.Start(context.Background(), false); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	if ci := recvWithin(t, ln.Disconnected(), 5*time.Second, "Disconnected"); ci.Code != ZaloAbnormalClosure {
+		t.Fatalf("Disconnected code = %d, mong %d", ci.Code, ZaloAbnormalClosure)
+	}
+}

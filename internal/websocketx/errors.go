@@ -55,10 +55,15 @@ func (c *client) isFatalContextErr(err error) bool {
 func closeInfoFromErr(err error) CloseInfo {
 	var ci CloseInfo
 	var ce websocket.CloseError
-	if errors.As(err, &ce) {
+	switch {
+	case errors.As(err, &ce):
 		ci.Code = int(ce.Code)
 		ci.Reason = ce.Reason
-	} else {
+	case isEOForUnexpected(err) || isConnClosedOrReset(err):
+		// Connection lost without a close frame: 1006 (RFC 6455 §7.1.5).
+		ci.Code = int(websocket.StatusAbnormalClosure)
+		ci.Err = err
+	default:
 		ci.Code = int(websocket.StatusInternalError)
 		ci.Err = err
 	}
