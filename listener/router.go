@@ -33,8 +33,11 @@ func (ln *listener) router(ctx context.Context, version, cmd, sub uint, body Bas
 	case "1_524_0":
 		ln.handleClearUnreads(ctx, body, model.ThreadTypeGroup)
 
-	case "1_510_1", "1_511_1":
-		ln.handleOldMessages(ctx, body)
+	case "1_510_1":
+		ln.handleOldMessages(ctx, body, model.ThreadTypeUser)
+
+	case "1_511_1":
+		ln.handleOldMessages(ctx, body, model.ThreadTypeGroup)
 
 	case "1_521_0":
 		ln.handleGroupMessages(ctx, body)
@@ -48,8 +51,11 @@ func (ln *listener) router(ctx context.Context, version, cmd, sub uint, body Bas
 	case "1_602_0":
 		ln.handleActions(ctx, body)
 
-	case "1_610_1", "1_611_1":
-		ln.handleOldReactions(ctx, body)
+	case "1_610_1":
+		ln.handleOldReactions(ctx, body, model.ThreadTypeUser)
+
+	case "1_611_1":
+		ln.handleOldReactions(ctx, body, model.ThreadTypeGroup)
 
 	case "1_612_0":
 		ln.handleReactions(ctx, body)
@@ -145,33 +151,60 @@ func (ln *listener) handleMessages(ctx context.Context, body BaseWSMessage) {
 	}
 }
 
-func (ln *listener) handleOldMessages(ctx context.Context, body BaseWSMessage) {
+// handleOldMessages: thread type comes from the cmd (510 user, 511 group) as
+// upstream; replayed recalls are emitted as Undo after the batch (PR #391).
+func (ln *listener) handleOldMessages(ctx context.Context, body BaseWSMessage, tt model.ThreadType) {
 	eventData, err := decodeEventData[events.OldMessagesEventData](body, ln.cipherKey)
 	if err != nil {
 		ln.emitDecodeFailure(ctx, errs.WrapZCA("Failed to decode event data:", "listener.handleOldMessages", err))
 		return
 	}
 
-	messages := make([]model.Message, 0, len(eventData.Data.Msgs)+len(eventData.Data.GroupMsgs))
-
-	threadType := model.ThreadTypeUser
-	selected := eventData.Data.Msgs
-	if len(eventData.Data.GroupMsgs) > 0 {
-		threadType = model.ThreadTypeGroup
-		selected = eventData.Data.GroupMsgs
-	}
-
+	const op = "listener.handleOldMessages"
 	uid := ln.sc.UID()
-	for _, msg := range selected {
-		messageObject := model.NewUserMessage(uid, msg)
-		messages = append(messages, messageObject)
+	messages := make([]model.Message, 0, len(eventData.Data.Msgs)+len(eventData.Data.GroupMsgs))
+	var undos []model.Undo
+	failed, total := 0, 0
+	addUndo := func(u model.Undo) {
+		if !u.IsSelf || ln.selfListen {
+			undos = append(undos, u)
+		}
+	}
+	if tt == model.ThreadTypeGroup {
+		total = len(eventData.Data.GroupMsgs)
+		for _, msg := range eventData.Data.GroupMsgs {
+			switch {
+			case msg.Err != nil:
+				failed++
+				ln.emitItemErrors(ctx, op, []events.ItemError{*msg.Err})
+			case msg.Undo != nil:
+				addUndo(model.NewUndo(uid, *msg.Undo, true))
+			case msg.Message != nil:
+				messages = append(messages, model.NewGroupMessage(uid, *msg.Message))
+			}
+		}
+	} else {
+		total = len(eventData.Data.Msgs)
+		for _, msg := range eventData.Data.Msgs {
+			switch {
+			case msg.Err != nil:
+				failed++
+				ln.emitItemErrors(ctx, op, []events.ItemError{*msg.Err})
+			case msg.Undo != nil:
+				addUndo(model.NewUndo(uid, *msg.Undo, false))
+			case msg.Message != nil:
+				messages = append(messages, model.NewUserMessage(uid, *msg.Message))
+			}
+		}
 	}
 
-	ln.emitItemErrors(ctx, "listener.handleOldMessages", eventData.Data.Errors)
-	if len(messages) == 0 && len(eventData.Data.Errors) > 0 {
-		return // nothing decoded; an empty batch would also carry a guessed thread type
+	if failed > 0 && failed == total {
+		return // nothing decoded: an empty batch would read as "no more history"
 	}
-	emit(ctx, ln.ch.OldMessages, model.NewOldMessage(messages, threadType))
+	emit(ctx, ln.ch.OldMessages, model.NewOldMessage(messages, tt))
+	for _, u := range undos {
+		emit(ctx, ln.ch.Undo, u)
+	}
 }
 
 func (ln *listener) handleMessagesStatus(ctx context.Context, body BaseWSMessage) {
@@ -326,7 +359,7 @@ func (ln *listener) handleReactions(ctx context.Context, body BaseWSMessage) {
 	}
 }
 
-func (ln *listener) handleOldReactions(ctx context.Context, body BaseWSMessage) {
+func (ln *listener) handleOldReactions(ctx context.Context, body BaseWSMessage, threadType model.ThreadType) {
 	eventData, err := decodeEventData[events.ReactionEventData](body, ln.cipherKey)
 	if err != nil {
 		ln.emitDecodeFailure(ctx, errs.WrapZCA("Failed to decode event data", "listener.handleOldReactions", err))
@@ -335,10 +368,9 @@ func (ln *listener) handleOldReactions(ctx context.Context, body BaseWSMessage) 
 
 	reactions := make([]model.Reaction, 0, len(eventData.Data.Reactions)+len(eventData.Data.GroupReactions))
 
-	threadType := model.ThreadTypeUser
+	// Thread type from the cmd (610 user, 611 group), as upstream.
 	selected := eventData.Data.Reactions
-	if len(eventData.Data.GroupReactions) > 0 {
-		threadType = model.ThreadTypeGroup
+	if threadType == model.ThreadTypeGroup {
 		selected = eventData.Data.GroupReactions
 	}
 

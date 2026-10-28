@@ -7,6 +7,7 @@
 ### Thêm (tương thích, nhưng `listener.Listener` có thêm method — ai tự cài interface này phải bổ sung)
 - Định tuyến cmd 551 như 501 (upstream PR #378).
 - `UnreadCleared()` cho cmd 504/524 (upstream PR #380); `PinConversations()`, `UnreadMark()`, `Voip()` cho cmd 601.
+- Thu hồi nằm trong lô tin cũ (510/511, phát lại sau khi nối lại) phát ra `Undo()` sau `OldMessages()` (upstream PR #391, đang mở).
 - `Unhandled()` + `UnhandledFrames()`: khung/control router chưa xử lý.
 - `DroppedOptionalEvents()`: tin rơi ở kênh tuỳ chọn (xem "Đổi hành vi").
 - `DroppedErrors()`: lỗi bị bỏ vì kênh `Error()` (buffer 16) đầy — trước đây rơi không đếm.
@@ -33,6 +34,12 @@
   — giữ scheme+host+path, query thành `?<redacted>`; log "Rotating endpoint" cũng bỏ query. Lưu ý
   `DecodeError.Error()` vẫn chứa tới 512 byte nội dung tin (dữ liệu người dùng) — xem USAGE.
 - Friend action chưa có decoder đi vào `Unhandled()`; control nhóm/bạn bè giải hỏng phát `*DecodeError`.
+- Tin cũ của nhóm (cmd 511) là `model.GroupMessage` (ThreadID = nhóm), như upstream; trước là `UserMessage` với
+  ThreadID = người gửi — ứng dụng nào đang tự sửa thread = `idTo` phải bỏ phần sửa đó.
+- `OldMessages` / `OldReactions` lấy loại thread theo cmd (510/610 = 1-1, 511/611 = nhóm), không đoán theo payload
+  (trước: lô nhóm rỗng bị báo là 1-1). Thu hồi không còn lẫn trong `OldMessages.Messages`.
+- `events.OldMessagesEventData` đổi kiểu trường (giải từng tin như tin sống) và bỏ `Errors`; gói `events` là
+  phần giải mã nội bộ của listener.
 - Kênh tuỳ chọn (`Unhandled`, `UnreadCleared`, `PinConversations`, `UnreadMark`, `Voip`) đầy thì bỏ tin MỚI và
   đếm vào `DroppedOptionalEvents()`, không vào `DroppedEvents()` — ứng dụng không đọc các kênh này không bị
   báo động giả. `DroppedEvents()` giờ chỉ là kênh lõi (tin, reaction, undo, nhóm, bạn bè, receipt...).
