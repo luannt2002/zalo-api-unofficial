@@ -216,3 +216,24 @@ func TestLifecycleMatTCPLa1006(t *testing.T) {
 		t.Fatalf("Disconnected code = %d, mong %d", ci.Code, ZaloAbnormalClosure)
 	}
 }
+
+// Ca 5 — 1006 không có lịch từ máy chủ: giãn 2/5/10/20/30/60 s, tối đa 8 lần, rồi hết lượt để
+// listener phát Closed cho ứng dụng đăng nhập lại (bản cũ thử lại vô hạn, Closed không bao giờ tới).
+func TestLifecycle1006CoTran(t *testing.T) {
+	ln := newLiveListener(t, "wss://primary.example", &session.Settings{})
+
+	want := []int{2000, 5000, 10000, 20000, 30000, 60000, 60000, 60000}
+	for i, d := range want {
+		got, ok := ln.canRetry(ZaloAbnormalClosure)
+		if !ok || got < d/2 || got > d {
+			t.Fatalf("lần %d: canRetry(1006) = (%d, %v), mong trong [%d, %d]", i+1, got, ok, d/2, d)
+		}
+	}
+	if got, ok := ln.canRetry(ZaloAbnormalClosure); ok {
+		t.Fatalf("lần 9: canRetry(1006) = (%d, true), mong hết lượt", got)
+	}
+	ln.resetRetryCounters()
+	if _, ok := ln.canRetry(ZaloAbnormalClosure); !ok {
+		t.Fatal("sau reset phải thử lại được")
+	}
+}

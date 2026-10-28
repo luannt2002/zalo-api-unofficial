@@ -470,6 +470,13 @@ func buildRetryStates(sc session.MutableContext) map[string]*retryState {
 			}
 		}
 	}
+
+	// Abnormal closure (network drop) with no server schedule: back off and give
+	// up after 8 attempts so Closed reaches the app (zca-js 2.1.2 community patch).
+	key := fmt.Sprint(ZaloAbnormalClosure)
+	if _, ok := retryStates[key]; !ok {
+		retryStates[key] = &retryState{max: 8, times: []int{2_000, 5_000, 10_000, 20_000, 30_000, 60_000}}
+	}
 	return retryStates
 }
 
