@@ -33,6 +33,9 @@ phủ sự kiện ở `listener_audit`.
 - `Stop()` rồi `Start()` lại trên kết nối đang sống chạy được (trước: thường báo "Already started" vì client cũ
   không được dọn). `Stop()` huỷ và đọc client trong cùng một vùng khoá, nên không còn cửa sổ để lần nối lại
   đang quay số tạo ra một kết nối không ai đóng.
+- Lượt nối lại quay số lỗi mà xong muộn không còn xoá client / huỷ context của một `Start()` mới hơn (hồi quy của
+  chính đợt này: `Start()` trả `nil` mà listener đã chết). Bước reset / `Closed` / huỷ khi đóng kết nối chỉ chạy
+  nếu context của lượt đó vẫn là lượt mới nhất.
 - `ZCAError.Error()` in kèm nguyên nhân (cắt 512 byte).
 - Bảo mật: lỗi quay số WebSocket (`*url.Error`) không còn in query của URL ws (mang `zpw_sek` và tham số phiên)
   — giữ scheme+host+path, query thành `?<redacted>`; log "Rotating endpoint" cũng bỏ query. Lưu ý

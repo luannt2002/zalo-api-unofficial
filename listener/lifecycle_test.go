@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -337,5 +338,98 @@ func TestLifecycleStopRoiStartLai(t *testing.T) {
 		if ln.getClient() != nil {
 			t.Fatalf("lần %d: client vẫn còn sau Stop()", i+1)
 		}
+	}
+}
+
+// P1 (soát rc.2) — callback của lượt nối lại quay số LỖI không được đụng vào kết nối mà một Start()
+// mới hơn đã dựng. Ca: mạng đứt, lượt quay số 2 lỗi; ứng dụng gọi Start() (hoặc Stop() rồi Start())
+// ngay lúc đó. Bản cũ: callback cũ reset() / cancelActiveContext() không kiểm context của mình còn
+// hiệu lực ⇒ xoá client mới, huỷ context mới ⇒ Start() trả nil mà listener đã chết.
+//
+// Thứ tự hỏng (Start giành ln.mu xen giữa lúc lượt cũ nhả khoá và lúc callback cũ reset) bình thường
+// rất hẹp. Test ép nó tất định bằng chế độ đói của sync.Mutex: giữ ln.mu tới khi hẹn giờ và Start đều
+// xếp hàng, nhả rồi giành lại ngay ⇒ hẹn giờ thức dậy giành hụt sau > 1 ms chờ ⇒ mutex chuyển chế độ
+// đói ⇒ khoá được trao thẳng theo hàng đợi: hẹn giờ → (Stop) → Start, không goroutine nào chen ngang.
+func TestLifecycleCallbackCuKhongGietStartMoi(t *testing.T) {
+	for _, withStop := range []bool{false, true} {
+		name := "Start"
+		if withStop {
+			name = "StopRoiStart"
+		}
+		t.Run(name, func(t *testing.T) { callbackCuKhongGietStartMoi(t, withStop) })
+	}
+}
+
+func callbackCuKhongGietStartMoi(t *testing.T, withStop bool) {
+	dialing, release := make(chan struct{}), make(chan struct{})
+	var open atomic.Int32
+	url, _ := startDialCountingWS(t, func(ctx context.Context, n int32, accept func() *websocket.Conn) bool {
+		switch n {
+		case 1:
+			accept() // rớt ngay ⇒ 1006 ⇒ hẹn giờ nối lại
+			return true
+		case 2:
+			close(dialing)
+			<-release
+			return false // lượt nối lại lỗi
+		}
+		if c := accept(); c != nil {
+			open.Add(1)
+			keepOpen(ctx, c)
+			open.Add(-1)
+		}
+		return true
+	})
+	ln := newLiveListener(t, url, retrySettings("1006", 5, 300))
+	// Chạy trước cleanup Stop()/máy chủ (LIFO): lượt quay số đang chờ release không được treo chúng.
+	var once sync.Once
+	unblock := func() { once.Do(func() { close(release) }) }
+	t.Cleanup(unblock)
+	if err := ln.Start(context.Background(), true); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	recvWithin(t, ln.Disconnected(), 3*time.Second, "Disconnected của kết nối 1")
+	time.Sleep(30 * time.Millisecond) // canRetry + hẹn giờ đã xong
+
+	// Chỉ TryLock: nếu hẹn giờ đã giữ ln.mu (nó chờ release, mà release do test đóng) thì Lock sẽ treo.
+	// Không ép được thứ tự (máy quá tải) thì chạy tiếp không ép — điều kiện kiểm vẫn đúng cho code đúng.
+	held := ln.mu.TryLock()
+	if held {
+		time.Sleep(400 * time.Millisecond) // > trễ tối đa 300 ms ⇒ hẹn giờ đang chờ ln.mu
+	} else {
+		recvWithin(t, dialing, 3*time.Second, "lượt nối lại thứ 2") // hẹn giờ đang quay số, giữ ln.mu
+	}
+	if withStop {
+		go ln.Stop()
+		time.Sleep(20 * time.Millisecond)
+	}
+	startErr := make(chan error, 1)
+	go func() { startErr <- ln.Start(context.Background(), true) }()
+	time.Sleep(20 * time.Millisecond)
+	if held {
+		ln.mu.Unlock()
+		if ln.mu.TryLock() { // giành lại ⇒ hẹn giờ giành hụt ⇒ chế độ đói
+			time.Sleep(10 * time.Millisecond)
+			ln.mu.Unlock()
+		}
+	}
+
+	recvWithin(t, dialing, 3*time.Second, "lượt nối lại thứ 2")
+	unblock()
+	if err := recvWithin(t, startErr, 3*time.Second, "Start() của ứng dụng"); err != nil {
+		t.Fatalf("Start() của ứng dụng: %v", err)
+	}
+
+	time.Sleep(300 * time.Millisecond)
+	if ln.getClient() == nil {
+		t.Fatal("Start() trả nil nhưng client mới đã bị callback cũ xoá")
+	}
+	if n := open.Load(); n != 1 {
+		t.Fatalf("máy chủ còn %d kết nối mở, mong 1 (context mới bị huỷ?)", n)
+	}
+	select {
+	case ci := <-ln.Closed():
+		t.Fatalf("Closed %+v trong khi kết nối mới đang sống", ci)
+	default:
 	}
 }

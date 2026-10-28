@@ -100,6 +100,9 @@ type listener struct {
 	// attempt's context is never a child of the one we are about to cancel.
 	rootCtx context.Context
 	cancel  context.CancelFunc
+	// attempt is the context of the latest start; a close handler for an
+	// older attempt must not reset or cancel the listener.
+	attempt context.Context
 	wg      sync.WaitGroup
 }
 
@@ -180,6 +183,7 @@ func (ln *listener) start(ctx context.Context, retryOnClose bool) (context.Conte
 
 	lctx, cancel := context.WithCancel(ln.rootCtx)
 	ln.cancel = cancel
+	ln.attempt = lctx
 
 	client, err := ln.createWebSocketConnection(lctx)
 	if err != nil {
@@ -358,7 +362,10 @@ func (ln *listener) run(ctx context.Context, retryOnClose bool) {
 }
 
 func (ln *listener) handleConnectionClose(ctx context.Context, ci websocketx.CloseInfo, retryOnClose bool) {
-	ln.reset()
+	// A failed reconnect's callback can run after a newer Start took over.
+	if !ln.resetIfCurrent(ctx) {
+		return
+	}
 
 	select {
 	case ln.ch.Disconnected <- ci:
@@ -370,14 +377,27 @@ func (ln *listener) handleConnectionClose(ctx context.Context, ci websocketx.Clo
 	if delay, ok := ln.shouldRetryConnection(ctx, ci, retryOnClose); ok {
 		if err := ln.scheduleReconnection(ctx, ci, delay); err != nil {
 			ln.emitError(ctx, errs.WrapZCA("failed to schedule reconnection:", "listener.handleConnectionClose", err))
-			ln.emitClosed(ctx, ci)
-			ln.cancelActiveContext()
+			ln.closeIfCurrent(ctx, ci)
 		}
 		return
 	}
 
+	ln.closeIfCurrent(ctx, ci)
+}
+
+// closeIfCurrent emits Closed and cancels, unless a newer attempt took over.
+// emitClosed never blocks, so it is safe under ln.mu.
+func (ln *listener) closeIfCurrent(ctx context.Context, ci websocketx.CloseInfo) {
+	ln.mu.Lock()
+	defer ln.mu.Unlock()
+	if ln.attempt != ctx {
+		return
+	}
 	ln.emitClosed(ctx, ci)
-	ln.cancelActiveContext()
+	if ln.cancel != nil {
+		ln.cancel()
+		ln.cancel = nil
+	}
 }
 
 func (ln *listener) Stop() {
@@ -406,7 +426,21 @@ func (ln *listener) Stop() {
 func (ln *listener) reset() {
 	ln.mu.Lock()
 	defer ln.mu.Unlock()
+	ln.resetLocked()
+}
 
+// resetIfCurrent resets only if ctx is still the latest attempt's context.
+func (ln *listener) resetIfCurrent(ctx context.Context) bool {
+	ln.mu.Lock()
+	defer ln.mu.Unlock()
+	if ln.attempt != ctx {
+		return false
+	}
+	ln.resetLocked()
+	return true
+}
+
+func (ln *listener) resetLocked() {
 	if ln.pingStopper != nil {
 		(*ln.pingStopper)()
 		ln.pingStopper = nil
