@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand/v2"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/luannt2002/zalo-api-unofficial/errs"
@@ -222,7 +223,9 @@ func (ln *listener) rotateEndpoint() error {
 		return errs.NewZCA("build websocket URL failed", "listener.rotateEndpoint")
 	}
 	ln.wsURL = wsURL
-	logger.Log(ln.sc).Verbosef(`Rotating endpoint to %s`, ln.wsURL)
+	// The query carries session parameters (zpw_sek...): log scheme+host+path only.
+	logged, _, _ := strings.Cut(wsURL, "?")
+	logger.Log(ln.sc).Verbosef(`Rotating endpoint to %s`, logged)
 
 	return nil
 }

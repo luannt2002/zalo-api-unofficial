@@ -9,6 +9,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -213,7 +214,7 @@ func dial(ctx context.Context, urls string, opts *DialOptions, rand io.Reader) (
 func handshakeRequest(ctx context.Context, urls string, opts *DialOptions, copts *compressionOptions, secWebSocketKey string) (*http.Response, error) {
 	u, err := url.Parse(urls)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse url: %w", err)
+		return nil, fmt.Errorf("failed to parse url: %w", redactURLError(err))
 	}
 
 	switch u.Scheme {
@@ -251,9 +252,21 @@ func handshakeRequest(ctx context.Context, urls string, opts *DialOptions, copts
 
 	resp, err := opts.HTTPClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to send handshake request: %w", err)
+		return nil, fmt.Errorf("failed to send handshake request: %w", redactURLError(err))
 	}
 	return resp, nil
+}
+
+// PATCH FORK (Zalo): *url.Error prints the whole URL, and the Zalo ws query
+// carries session parameters (zpw_sek...). Keep scheme, host and path only.
+func redactURLError(err error) error {
+	var ue *url.Error
+	if errors.As(err, &ue) {
+		if i := strings.IndexAny(ue.URL, "?#"); i >= 0 {
+			ue.URL = ue.URL[:i] + "?<redacted>"
+		}
+	}
+	return err
 }
 
 func secWebSocketKey(rr io.Reader) (string, error) {

@@ -240,6 +240,11 @@ không giải mã được — tin hỏng bị bỏ, phần còn lại của lô
 `Raw` cắt ngắn phát trên `Error()`), `listener.UnhandledFrames()` (cmd/act_type chưa có handler),
 `listener.DroppedErrors()` (lỗi bị bỏ vì `Error()` đầy — không đọc `Error()` thì số này tăng).
 
+> **Dữ liệu người dùng trong lỗi:** `DecodeError.Error()` (và trường `Raw`) chứa tới 512 byte JSON thô của tin
+> không giải mã được — tức nội dung tin nhắn của người dùng. Ứng dụng tự quyết có log nguyên văn hay không
+> (vd chỉ log `Op` + `MsgID`). Lỗi quay số WebSocket đã che query của URL (`?<redacted>`), vì query mang tham số
+> phiên như `zpw_sek`.
+
 Hàm bổ sung:
 
 ```go
