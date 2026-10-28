@@ -371,11 +371,14 @@ func (ln *listener) handleConnectionClose(ctx context.Context, ci websocketx.Clo
 
 func (ln *listener) Stop() {
 	client := ln.getClient()
+
+	// Always cancel: during a retry backoff client is nil but the pending
+	// reconnect waits on this context, and must not revive a stopped listener.
+	ln.cancelActiveContext()
 	if client == nil {
 		return
 	}
 
-	ln.cancelActiveContext()
 	client.Close(ZaloManualClosure, "")
 
 	ln.wg.Wait()
