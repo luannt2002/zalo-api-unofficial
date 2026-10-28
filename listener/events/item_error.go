@@ -24,3 +24,13 @@ func newItemError(raw []byte, err error) ItemError {
 	_ = json.Unmarshal(raw, &id)
 	return ItemError{MsgID: jsonx.ScalarString(id.MsgID), Raw: append(json.RawMessage(nil), raw...), Err: err}
 }
+
+// isUndo peeks msgType, so ordinary messages skip a failing TUndo decode
+// (which takes the slow lenient path on every text message).
+func isUndo(data []byte) bool {
+	var h struct {
+		MsgType string `json:"msgType"`
+	}
+	_ = json.Unmarshal(data, &h)
+	return h.MsgType == "chat.undo"
+}

@@ -17,10 +17,12 @@ type messageOrUndo struct {
 }
 
 func (m *messageOrUndo) UnmarshalJSON(data []byte) error {
-	var tu model.TUndo
-	if err := jsonx.UnmarshalLenient(data, &tu); err == nil && tu.MsgID != "" && tu.MsgType == "chat.undo" {
-		m.Undo = &tu
-		return nil
+	if isUndo(data) {
+		var tu model.TUndo
+		if err := jsonx.UnmarshalLenient(data, &tu); err == nil && tu.MsgID != "" {
+			m.Undo = &tu
+			return nil
+		}
 	}
 	var tm model.TMessage
 	err := jsonx.UnmarshalLenient(data, &tm)
