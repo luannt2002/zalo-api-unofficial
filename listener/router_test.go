@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"slices"
+	"sync"
 	"testing"
 	"time"
 
@@ -246,4 +247,26 @@ func TestRouterMessageChiuChuoiLanSo(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatal("tin bị nuốt im lặng")
 	}
+}
+
+// fcea95a — đổi cipherKey và giải khung song song không được là data race. Đường chạy thật chỉ có
+// một goroutine (run) chạm cipherKey; test giữ hợp đồng đó và chỉ có nghĩa khi chạy với -race.
+func TestCipherKeyDongBo(t *testing.T) {
+	ln := newRouterTestListener(t)
+	key := "a2V5"
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		for range 200 {
+			ln.router(context.Background(), 1, 1, 1, BaseWSMessage{Key: &key})
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		for range 200 {
+			ln.router(context.Background(), 1, 501, 0, plainFrame(`{"msgs":[]}`))
+		}
+	}()
+	wg.Wait()
 }

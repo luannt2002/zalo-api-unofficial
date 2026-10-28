@@ -433,3 +433,46 @@ func callbackCuKhongGietStartMoi(t *testing.T, withStop bool) {
 	default:
 	}
 }
+
+// 7170fa4 — Stop() phải huỷ và đọc client trong MỘT vùng khoá. Bản cũ đọc client (RLock) rồi mới
+// huỷ (Lock): một lượt nối lại giành khoá xen giữa ⇒ tạo client mà Stop không đóng, ln.client kẹt
+// lại ⇒ Start() sau đó báo "Already started". Ép thứ tự bằng chế độ đói như test P1: hẹn giờ đứng
+// đầu hàng đợi; khi nhả khoá, RLock của Stop cũ được đi trước, rồi khoá trao thẳng cho hẹn giờ.
+func TestLifecycleStopKhongLotLuotNoiLai(t *testing.T) {
+	var open atomic.Int32
+	url, _ := startDialCountingWS(t, func(ctx context.Context, n int32, accept func() *websocket.Conn) bool {
+		c := accept()
+		if n == 1 || c == nil {
+			return true // rớt ngay ⇒ 1006 ⇒ hẹn giờ nối lại
+		}
+		open.Add(1)
+		keepOpen(ctx, c)
+		open.Add(-1)
+		return true
+	})
+	ln := newLiveListener(t, url, retrySettings("1006", 5, 300))
+	if err := ln.Start(context.Background(), true); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	recvWithin(t, ln.Disconnected(), 3*time.Second, "Disconnected của kết nối 1")
+	time.Sleep(30 * time.Millisecond)
+
+	ln.mu.Lock()
+	time.Sleep(400 * time.Millisecond) // hẹn giờ đang chờ ln.mu
+	ln.mu.Unlock()
+	ln.mu.Lock() // hẹn giờ giành hụt ⇒ chế độ đói, nó đứng đầu hàng
+	time.Sleep(10 * time.Millisecond)
+	stopped := make(chan struct{})
+	go func() { ln.Stop(); close(stopped) }()
+	time.Sleep(20 * time.Millisecond)
+	ln.mu.Unlock()
+	recvWithin(t, stopped, 5*time.Second, "Stop() trả về")
+
+	waitFor(t, 3*time.Second, "kết nối của lượt nối lại bị đóng", func() bool { return open.Load() == 0 })
+	if ln.getClient() != nil {
+		t.Fatal("client của lượt nối lại còn kẹt sau Stop()")
+	}
+	if err := ln.Start(context.Background(), true); err != nil {
+		t.Fatalf("Start() sau Stop(): %v", err)
+	}
+}
