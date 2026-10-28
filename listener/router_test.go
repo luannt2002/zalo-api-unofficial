@@ -66,3 +66,49 @@ func TestRouterCmd551LaTinMotMot(t *testing.T) {
 		t.Fatalf("msgId=%q threadId=%q, mong m551/200", um.Data.MsgID, um.ThreadID())
 	}
 }
+
+// cmd 504 (1-1) / 524 (nhóm) subCmd 0: hội thoại đã đọc ở thiết bị khác (upstream PR #380).
+// Chỉ type 0 là "đọc hội thoại"; type 2 đi kèm idTo "-1" nên bị lọc.
+func TestRouterUnreadCleared(t *testing.T) {
+	tests := []struct {
+		name     string
+		cmd      uint
+		wantType model.ThreadType
+	}{
+		{"504 user", 504, model.ThreadTypeUser},
+		{"524 group", 524, model.ThreadTypeGroup},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ln := newRouterTestListener(t)
+			ln.router(context.Background(), 1, tt.cmd, 0, plainFrame(`{"clearUnreads":[
+				{"idTo":"300","isGroup":0,"lastMsgId":"7001","type":0,"ts":1},
+				{"idTo":400,"lastMsgId":7002,"type":0},
+				{"idTo":"-1","type":2},
+				{"idTo":"","type":0}
+			]}`))
+
+			items := recvOne(t, ln.UnreadCleared())
+			if len(items) != 2 {
+				t.Fatalf("len(items) = %d, mong 2 (chỉ type 0 có idTo): %#v", len(items), items)
+			}
+			want := []struct{ thread, last string }{{"300", "7001"}, {"400", "7002"}}
+			for i, w := range want {
+				it := items[i]
+				if it.Type != tt.wantType || it.ThreadID != w.thread || it.LastMsgID != w.last {
+					t.Errorf("items[%d] = {%v %q %q}, mong {%v %q %q}", i, it.Type, it.ThreadID, it.LastMsgID, tt.wantType, w.thread, w.last)
+				}
+				if len(it.Data) == 0 {
+					t.Errorf("items[%d].Data rỗng, mong giữ bản thô", i)
+				}
+			}
+		})
+	}
+}
+
+func TestRouterUnreadClearedKhongPhatKhiRong(t *testing.T) {
+	ln := newRouterTestListener(t)
+	ln.router(context.Background(), 1, 504, 0, plainFrame(`{"clearUnreads":[{"idTo":"-1","type":2}]}`))
+	ln.router(context.Background(), 1, 504, 0, plainFrame(`{"clearUnreads":[]}`))
+	assertEmpty(t, ln.UnreadCleared())
+}

@@ -2,6 +2,7 @@ package listener
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"time"
@@ -24,6 +25,12 @@ func (ln *listener) router(ctx context.Context, version, cmd, sub uint, body Bas
 
 	case "1_502_0":
 		ln.handleMessagesStatus(ctx, body)
+
+	case "1_504_0":
+		ln.handleClearUnreads(ctx, body, model.ThreadTypeUser)
+
+	case "1_524_0":
+		ln.handleClearUnreads(ctx, body, model.ThreadTypeGroup)
 
 	case "1_510_1", "1_511_1":
 		ln.handleOldMessages(ctx, body)
@@ -230,6 +237,54 @@ func (ln *listener) handleGroupMessagesStatus(ctx context.Context, body BaseWSMe
 		}
 		emit(ctx, ln.ch.SeenMessages, seenMsgs)
 	}
+}
+
+// handleClearUnreads: conversations read on another device (upstream PR #380).
+func (ln *listener) handleClearUnreads(ctx context.Context, body BaseWSMessage, tt model.ThreadType) {
+	eventData, err := decodeEventData[events.ClearUnreadEventData](body, ln.cipherKey)
+	if err != nil {
+		ln.emitError(ctx, errs.WrapZCA("Failed to decode event data:", "listener.handleClearUnreads", err))
+		return
+	}
+
+	items := make([]model.ClearUnread, 0, len(eventData.Data.ClearUnreads))
+	for _, raw := range eventData.Data.ClearUnreads {
+		var c struct {
+			Type      json.RawMessage `json:"type"`
+			IDTo      json.RawMessage `json:"idTo"`
+			LastMsgID json.RawMessage `json:"lastMsgId"`
+		}
+		if err := json.Unmarshal(raw, &c); err != nil {
+			ln.emitError(ctx, errs.WrapZCA("Failed to decode clearUnreads item:", "listener.handleClearUnreads", err))
+			continue
+		}
+		// Only type 0 is a thread read; type 2 comes with idTo "-1".
+		threadID := rawString(c.IDTo)
+		if rawString(c.Type) != "0" || threadID == "" {
+			continue
+		}
+		items = append(items, model.ClearUnread{
+			Type:      tt,
+			ThreadID:  threadID,
+			LastMsgID: rawString(c.LastMsgID),
+			Data:      raw,
+		})
+	}
+	if len(items) > 0 {
+		emit(ctx, ln.ch.UnreadCleared, items)
+	}
+}
+
+// rawString reads a JSON value Zalo sends either as a string or as a bare number.
+func rawString(b json.RawMessage) string {
+	var s string
+	if err := json.Unmarshal(b, &s); err == nil {
+		return s
+	}
+	if len(b) == 0 || string(b) == "null" {
+		return ""
+	}
+	return string(b)
 }
 
 func (ln *listener) handleReactions(ctx context.Context, body BaseWSMessage) {

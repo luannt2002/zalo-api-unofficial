@@ -25,6 +25,7 @@ type Buffers struct {
 	Friend            int
 	Group             int
 	CipherKey         int
+	UnreadCleared     int
 }
 
 func defaultBuffers() Buffers {
@@ -49,6 +50,7 @@ func defaultBuffers() Buffers {
 		Friend:            256,
 		Group:             256,
 		CipherKey:         4,
+		UnreadCleared:     64,
 	}
 }
 
@@ -69,6 +71,7 @@ type channels struct {
 	Friend            chan model.FriendEvent
 	Group             chan model.GroupEvent
 	CipherKey         chan string
+	UnreadCleared     chan []model.ClearUnread
 }
 
 func (ln *listener) Connected() <-chan struct{}                { return ln.ch.Connected }
@@ -90,6 +93,7 @@ func (ln *listener) UploadAttachment() <-chan model.UploadAttachment { return ln
 func (ln *listener) Friend() <-chan model.FriendEvent                { return ln.ch.Friend }
 func (ln *listener) Group() <-chan model.GroupEvent                  { return ln.ch.Group }
 func (ln *listener) CipherKey() <-chan string                        { return ln.ch.CipherKey }
+func (ln *listener) UnreadCleared() <-chan []model.ClearUnread       { return ln.ch.UnreadCleared }
 
 func (ln *listener) emitError(ctx context.Context, err error) {
 	select {
