@@ -9,6 +9,7 @@
 - `UnreadCleared()` cho cmd 504/524 (upstream PR #380); `PinConversations()`, `UnreadMark()`, `Voip()` cho cmd 601.
 - `Unhandled()` + `UnhandledFrames()`: khung/control router chưa xử lý.
 - `DroppedOptionalEvents()`: tin rơi ở kênh tuỳ chọn (xem "Đổi hành vi").
+- `DroppedErrors()`: lỗi bị bỏ vì kênh `Error()` (buffer 16) đầy — trước đây rơi không đếm.
 - `DecodeFailures()` + `*DecodeError{Op, MsgID, Raw, Err}`: tin không giải mã được không còn biến mất im lặng.
 - `events.*`: trường `Errors` / `Err` / `RawData` / `Content` mới; trường cũ giữ nguyên.
 

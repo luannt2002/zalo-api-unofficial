@@ -114,13 +114,17 @@ func (ln *listener) Voip() <-chan model.VoipEvent              { return ln.ch.Vo
 func (ln *listener) Unhandled() <-chan RawFrame                { return ln.ch.Unhandled }
 
 func (ln *listener) emitError(ctx context.Context, err error) {
-	select {
-	case <-ctx.Done():
+	if ctx.Err() != nil {
 		return
-	case ln.ch.Error <- err:
-	default:
 	}
+	offer(ln.ch.Error, err, &droppedErrors)
 }
+
+var droppedErrors atomic.Int64
+
+// DroppedErrors returns how many errors (all listeners) were dropped because
+// Error() was full.
+func DroppedErrors() int64 { return droppedErrors.Load() }
 
 func (ln *listener) emitClosed(ctx context.Context, ci websocketx.CloseInfo) {
 	select {

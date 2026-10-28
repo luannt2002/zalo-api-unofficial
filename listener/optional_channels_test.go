@@ -47,3 +47,21 @@ func TestUnhandledTranDemVaoKenhTuyChon(t *testing.T) {
 		t.Fatalf("DroppedOptionalEvents tăng %d, mong %d", got, want)
 	}
 }
+
+// Kênh Error() (buffer 16) đầy thì lỗi bị bỏ — phải đếm được, không rơi im lặng.
+func TestErrorTranPhaiDem(t *testing.T) {
+	ln := newRouterTestListener(t)
+	dropped, errsDropped := DroppedEvents(), DroppedErrors()
+	for range 40 {
+		ln.router(context.Background(), 1, 501, 0, plainFrame(`{"msgs":[{"msgId":"bad","content":12}]}`))
+	}
+	if got, want := DroppedErrors()-errsDropped, int64(40-16); got != want {
+		t.Fatalf("DroppedErrors tăng %d, mong %d (40 lỗi - buffer 16)", got, want)
+	}
+	if got := DroppedEvents() - dropped; got != 0 {
+		t.Fatalf("DroppedEvents tăng %d, mong 0", got)
+	}
+	if n := len(ln.Error()); n != 16 {
+		t.Fatalf("Error() giữ %d lỗi, mong 16", n)
+	}
+}

@@ -237,7 +237,8 @@ Kênh tuỳ chọn — `UnreadCleared`, `PinConversations`, `UnreadMark`, `Voip`
 
 Bộ đếm toàn tiến trình: `listener.DroppedEvents()` (kênh lõi rơi vì đầy), `listener.DecodeFailures()` (tin/khung
 không giải mã được — tin hỏng bị bỏ, phần còn lại của lô vẫn tới, lỗi `*listener.DecodeError` kèm `MsgID` và
-`Raw` cắt ngắn phát trên `Error()`), `listener.UnhandledFrames()` (cmd/act_type chưa có handler).
+`Raw` cắt ngắn phát trên `Error()`), `listener.UnhandledFrames()` (cmd/act_type chưa có handler),
+`listener.DroppedErrors()` (lỗi bị bỏ vì `Error()` đầy — không đọc `Error()` thì số này tăng).
 
 Hàm bổ sung:
 
