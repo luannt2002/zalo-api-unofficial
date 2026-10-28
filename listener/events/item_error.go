@@ -3,8 +3,10 @@ package events
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	"github.com/luannt2002/zalo-api-unofficial/internal/jsonx"
+	"github.com/luannt2002/zalo-api-unofficial/model"
 )
 
 // ItemError is one item of a batch that could not be decoded; the other items
@@ -33,4 +35,19 @@ func isUndo(data []byte) bool {
 	}
 	_ = json.Unmarshal(data, &h)
 	return h.MsgType == "chat.undo"
+}
+
+// decodeUndo decodes a chat.undo item. A recall that does not decode is an
+// error: falling back to the message path would show it as a new message.
+func decodeUndo(data []byte) (*model.TUndo, *ItemError) {
+	var tu model.TUndo
+	err := jsonx.UnmarshalLenient(data, &tu)
+	if err == nil && tu.MsgID != "" {
+		return &tu, nil
+	}
+	if err == nil {
+		err = errNoMsgID
+	}
+	ie := newItemError(data, fmt.Errorf("undo: %w", err))
+	return nil, &ie
 }

@@ -55,3 +55,17 @@ func BenchmarkMessageOrUndoText(b *testing.B) {
 		_ = m.UnmarshalJSON(item)
 	}
 }
+
+// Item chat.undo mà không giải được TUndo (vd content.cliMsgId không phải số) là một thu hồi hỏng:
+// phải thành lỗi, không được rơi sang nhánh tin và hiện ra như một tin mới.
+func TestThuHoiHongLaLoiKhongPhaiTin(t *testing.T) {
+	bad := []byte(`{"msgId":"r9","msgType":"chat.undo","uidFrom":"200","idTo":"0","content":{"globalMsgId":"9","cliMsgId":"c9","deleteMsg":0}}`)
+	var m messageOrUndo
+	if err := m.UnmarshalJSON(bad); err != nil || m.Message != nil || m.Undo != nil || m.Err == nil || m.Err.MsgID != "r9" {
+		t.Fatalf("1-1 = %+v (err %v), mong Err msgId r9", m, err)
+	}
+	var g groupMessageOrUndo
+	if err := g.UnmarshalJSON(bad); err != nil || g.Message != nil || g.Undo != nil || g.Err == nil {
+		t.Fatalf("nhóm = %+v (err %v), mong Err", g, err)
+	}
+}

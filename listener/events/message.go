@@ -18,11 +18,8 @@ type messageOrUndo struct {
 
 func (m *messageOrUndo) UnmarshalJSON(data []byte) error {
 	if isUndo(data) {
-		var tu model.TUndo
-		if err := jsonx.UnmarshalLenient(data, &tu); err == nil && tu.MsgID != "" {
-			m.Undo = &tu
-			return nil
-		}
+		m.Undo, m.Err = decodeUndo(data)
+		return nil
 	}
 	var tm model.TMessage
 	err := jsonx.UnmarshalLenient(data, &tm)

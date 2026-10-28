@@ -38,6 +38,8 @@
   ThreadID = người gửi — ứng dụng nào đang tự sửa thread = `idTo` phải bỏ phần sửa đó.
 - `OldMessages` / `OldReactions` lấy loại thread theo cmd (510/610 = 1-1, 511/611 = nhóm), không đoán theo payload
   (trước: lô nhóm rỗng bị báo là 1-1). Thu hồi không còn lẫn trong `OldMessages.Messages`.
+- Item `chat.undo` không giải được (vd `content.cliMsgId` không phải số) phát `*DecodeError`; trước đây rơi sang
+  nhánh tin và hiện ra như một tin mới.
 - Typing (cmd 602) giải khoan dung như tin (vd `isPC` dạng chuỗi, `gid` dạng số); không giải được thì phát
   `*DecodeError` thay vì một typing rỗng (UID `""`). Hành động 602 khác typing / typing lạ đi vào `Unhandled()`
   (trước: bỏ im lặng).
