@@ -2,10 +2,10 @@ package model
 
 import (
 	"encoding/json"
-	"strconv"
 
 	"github.com/luannt2002/zalo-api-unofficial/config"
 	"github.com/luannt2002/zalo-api-unofficial/errs"
+	"github.com/luannt2002/zalo-api-unofficial/internal/jsonx"
 )
 
 type Urgency int
@@ -152,18 +152,19 @@ type TQuote struct {
 
 func (tq *TQuote) UnmarshalJSON(data []byte) error {
 	type alias TQuote
+	// ownerId arrives as a number or a string; upstream does String(ownerId).
 	aux := &struct {
-		OwnerID int `json:"ownerId"`
+		OwnerID json.RawMessage `json:"ownerId"`
 		*alias
 	}{
 		alias: (*alias)(tq),
 	}
 
-	if err := json.Unmarshal(data, &aux); err != nil {
+	if err := jsonx.UnmarshalLenient(data, aux); err != nil {
 		return err
 	}
 
-	tq.OwnerID = strconv.Itoa(aux.OwnerID)
+	tq.OwnerID = jsonx.ScalarString(aux.OwnerID)
 	return nil
 }
 
@@ -238,14 +239,14 @@ func (c *Content) UnmarshalJSON(data []byte) error {
 	}
 
 	var attach TAttachmentContent
-	if err := json.Unmarshal(data, &attach); err == nil && attach.Title != "" {
+	if err := jsonx.UnmarshalLenient(data, &attach); err == nil && attach.Title != "" {
 		c.Attachment = &attach
 		c.attachmentRaw = append(json.RawMessage(nil), data...) // giữ field phụ khỏi mất khi re-marshal
 		return nil
 	}
 
 	var deletedContent []TDeletedContent
-	if err := json.Unmarshal(data, &deletedContent); err == nil {
+	if err := jsonx.UnmarshalLenient(data, &deletedContent); err == nil {
 		c.DeletedContent = deletedContent
 		return nil
 	}

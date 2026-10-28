@@ -3,6 +3,7 @@ package events
 import (
 	"encoding/json"
 
+	"github.com/luannt2002/zalo-api-unofficial/internal/jsonx"
 	"github.com/luannt2002/zalo-api-unofficial/model"
 )
 
@@ -60,7 +61,7 @@ func unmarshalReactions(b json.RawMessage) ([]model.TReaction, error) {
 			alias: (*alias)(&r),
 		}
 
-		if err := json.Unmarshal(it, &aux); err != nil {
+		if err := jsonx.UnmarshalLenient(it, aux); err != nil {
 			return nil, err
 		}
 
@@ -68,7 +69,7 @@ func unmarshalReactions(b json.RawMessage) ([]model.TReaction, error) {
 			r.Content = model.ReactionContent{}
 		} else {
 			var content model.ReactionContent
-			if err := json.Unmarshal([]byte(aux.Content), &content); err != nil {
+			if err := jsonx.UnmarshalLenient([]byte(aux.Content), &content); err != nil {
 				return nil, err
 			}
 

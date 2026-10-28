@@ -200,3 +200,50 @@ func TestRouterVoip(t *testing.T) {
 		t.Fatalf("second = {%q %s}", second.Act, second.Data)
 	}
 }
+
+// Ca thật: tin nhóm trả lời có trích dẫn + @tag. quote.ownerId tới dạng CHUỖI (upstream zca-js
+// làm String(ownerId), tức chấp nhận cả hai). Bản cũ ép int ⇒ cả tin bị nuốt, không message, không error.
+func TestRouterGroupMessageQuoteOwnerIDChuoi(t *testing.T) {
+	ln := newRouterTestListener(t)
+	ln.router(context.Background(), 1, 521, 0, plainFrame(`{"groupMsgs":[{
+		"msgId":"g521","cliMsgId":"c1","msgType":"webchat","uidFrom":"200","idTo":"900","dName":"A","ts":"1761624780000",
+		"content":"@B trả lời nè",
+		"mentions":[{"uid":"201","pos":0,"len":2,"type":0}],
+		"quote":{"ownerId":"201","cliMsgId":1761624700000,"globalMsgId":7300000000001,"cliMsgType":1,"ts":1761624700000,"msg":"gốc","attach":"","fromD":"B","ttl":0}
+	}]}`))
+
+	select {
+	case msg := <-ln.Message():
+		gm, ok := msg.(model.GroupMessage)
+		if !ok {
+			t.Fatalf("Message() = %T, mong model.GroupMessage", msg)
+		}
+		if gm.Data.MsgID != "g521" || gm.Data.Quote == nil || gm.Data.Quote.OwnerID != "201" {
+			t.Fatalf("msgId=%q quote=%+v, mong g521 + ownerId 201", gm.Data.MsgID, gm.Data.Quote)
+		}
+	case err := <-ln.Error():
+		t.Fatalf("mong message, nhận error: %v", err)
+	case <-time.After(time.Second):
+		t.Fatal("tin nhóm có quote.ownerId dạng chuỗi bị nuốt im lặng: không message, không error")
+	}
+}
+
+// Tin 1-1 có trường số tới dạng chuỗi (status/ttl) và trường chuỗi tới dạng số (ts/cliMsgId)
+// vẫn phải tới ứng dụng.
+func TestRouterMessageChiuChuoiLanSo(t *testing.T) {
+	ln := newRouterTestListener(t)
+	ln.router(context.Background(), 1, 501, 0, plainFrame(
+		`{"msgs":[{"msgId":"m1","cliMsgId":123,"uidFrom":"200","idTo":"0","ts":1761624780000,"status":"1","ttl":"0","content":"hi"}]}`))
+
+	select {
+	case msg := <-ln.Message():
+		um := msg.(model.UserMessage)
+		if um.Data.MsgID != "m1" || um.Data.CliMsgID != "123" || um.Data.TS != "1761624780000" || um.Data.Status != 1 {
+			t.Fatalf("Data = %+v", um.Data)
+		}
+	case err := <-ln.Error():
+		t.Fatalf("mong message, nhận error: %v", err)
+	case <-time.After(time.Second):
+		t.Fatal("tin bị nuốt im lặng")
+	}
+}

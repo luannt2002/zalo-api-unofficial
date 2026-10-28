@@ -3,6 +3,7 @@ package events
 import (
 	"encoding/json"
 
+	"github.com/luannt2002/zalo-api-unofficial/internal/jsonx"
 	"github.com/luannt2002/zalo-api-unofficial/model"
 )
 
@@ -108,7 +109,7 @@ func decodeGroupEvent(action string, data []byte) (model.TGroupEvent, bool) {
 	switch model.ParseGroupEventType(action) {
 	case model.GroupEventTypeJoinRequest:
 		var ev model.TGroupEventJoinRequest
-		if err := json.Unmarshal(data, &ev); err != nil {
+		if err := jsonx.UnmarshalLenient(data, &ev); err != nil {
 			return nil, false
 		}
 		return ev, true
@@ -117,14 +118,14 @@ func decodeGroupEvent(action string, data []byte) (model.TGroupEvent, bool) {
 		model.GroupEventTypeUnpinTopic,
 		model.GroupEventTypeUpdatePinTopic:
 		var ev model.TGroupEventPinTopic
-		if err := json.Unmarshal(data, &ev); err != nil {
+		if err := jsonx.UnmarshalLenient(data, &ev); err != nil {
 			return nil, false
 		}
 		return ev, true
 
 	case model.GroupEventTypeReorderPinTopic:
 		var ev model.TGroupEventReorderPinTopic
-		if err := json.Unmarshal(data, &ev); err != nil {
+		if err := jsonx.UnmarshalLenient(data, &ev); err != nil {
 			return nil, false
 		}
 		return ev, true
@@ -132,7 +133,7 @@ func decodeGroupEvent(action string, data []byte) (model.TGroupEvent, bool) {
 	case model.GroupEventTypeUpdateBoard,
 		model.GroupEventTypeRemoveBoard:
 		var ev model.TGroupEventBoard
-		if err := json.Unmarshal(data, &ev); err != nil {
+		if err := jsonx.UnmarshalLenient(data, &ev); err != nil {
 			return nil, false
 		}
 		return ev, true
@@ -140,21 +141,21 @@ func decodeGroupEvent(action string, data []byte) (model.TGroupEvent, bool) {
 	case model.GroupEventTypeAcceptRemind,
 		model.GroupEventTypeRejectRemind:
 		var ev model.TGroupEventRemindRespond
-		if err := json.Unmarshal(data, &ev); err != nil {
+		if err := jsonx.UnmarshalLenient(data, &ev); err != nil {
 			return nil, false
 		}
 		return ev, true
 
 	case model.GroupEventTypeRemindTopic:
 		var ev model.TGroupEventRemindTopic
-		if err := json.Unmarshal(data, &ev); err != nil {
+		if err := jsonx.UnmarshalLenient(data, &ev); err != nil {
 			return nil, false
 		}
 		return ev, true
 
 	default:
 		var ev model.TGroupEventBase
-		if err := json.Unmarshal(data, &ev); err != nil {
+		if err := jsonx.UnmarshalLenient(data, &ev); err != nil {
 			return nil, false
 		}
 		return ev, true
@@ -165,7 +166,7 @@ func decodeFriendEvent(action string, data []byte) (model.TFriendEvent, bool) {
 	switch model.ParseFriendEventType(action) {
 	case model.FriendEventTypeRequest:
 		var ev model.TFriendEventRequest
-		if err := json.Unmarshal(data, &ev); err != nil {
+		if err := jsonx.UnmarshalLenient(data, &ev); err != nil {
 			return nil, false
 		}
 		return ev, true
@@ -173,28 +174,28 @@ func decodeFriendEvent(action string, data []byte) (model.TFriendEvent, bool) {
 	case model.FriendEventTypeRejectRequest,
 		model.FriendEventTypeUndoRequest:
 		var ev model.TFriendEventRejectUndo
-		if err := json.Unmarshal(data, &ev); err != nil {
+		if err := jsonx.UnmarshalLenient(data, &ev); err != nil {
 			return nil, false
 		}
 		return ev, true
 
 	case model.FriendEventTypeSeenFriendRequest:
 		var ev model.TFriendEventSeenRequest
-		if err := json.Unmarshal(data, &ev); err != nil {
+		if err := jsonx.UnmarshalLenient(data, &ev); err != nil {
 			return nil, false
 		}
 		return ev, true
 
 	case model.FriendEventTypePinCreate:
 		var ev model.TFriendEventPinCreate
-		if err := json.Unmarshal(data, &ev); err != nil {
+		if err := jsonx.UnmarshalLenient(data, &ev); err != nil {
 			return nil, false
 		}
 		return ev, true
 
 	case model.FriendEventTypePinUnpin:
 		var ev model.TFriendEventPinUnpin
-		if err := json.Unmarshal(data, &ev); err != nil {
+		if err := jsonx.UnmarshalLenient(data, &ev); err != nil {
 			return nil, false
 		}
 		return ev, true

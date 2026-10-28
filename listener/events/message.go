@@ -1,8 +1,7 @@
 package events
 
 import (
-	"encoding/json"
-
+	"github.com/luannt2002/zalo-api-unofficial/internal/jsonx"
 	"github.com/luannt2002/zalo-api-unofficial/model"
 )
 
@@ -17,12 +16,12 @@ type messageOrUndo struct {
 
 func (m *messageOrUndo) UnmarshalJSON(data []byte) error {
 	var tu model.TUndo
-	if err := json.Unmarshal(data, &tu); err == nil && tu.MsgID != "" && tu.MsgType == "chat.undo" {
+	if err := jsonx.UnmarshalLenient(data, &tu); err == nil && tu.MsgID != "" && tu.MsgType == "chat.undo" {
 		m.Undo = &tu
 		return nil
 	}
 	var tm model.TMessage
-	if err := json.Unmarshal(data, &tm); err == nil && tm.MsgID != "" {
+	if err := jsonx.UnmarshalLenient(data, &tm); err == nil && tm.MsgID != "" {
 		m.Message = &tm
 		return nil
 	}

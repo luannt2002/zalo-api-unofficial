@@ -13,6 +13,7 @@ import (
 
 	"github.com/luannt2002/zalo-api-unofficial/errs"
 	"github.com/luannt2002/zalo-api-unofficial/internal/cryptox"
+	"github.com/luannt2002/zalo-api-unofficial/internal/jsonx"
 )
 
 const (
@@ -155,7 +156,7 @@ func decompressGzip(compressed []byte) ([]byte, error) {
 
 func parseJSON[T any](data []byte) (*WSMessage[T], error) {
 	var result WSMessage[T]
-	if err := json.Unmarshal(data, &result); err != nil {
+	if err := jsonx.UnmarshalLenient(data, &result); err != nil {
 		return nil, errs.WrapZCA("failed to parse JSON data", "listener.parseJSON", err)
 	}
 	return &result, nil
