@@ -390,6 +390,8 @@ func (ln *listener) handleControls(ctx context.Context, body BaseWSMessage) {
 			ln.handleFriendEvent(ctx, content)
 		case "pinned_convers":
 			ln.handlePinnedConversations(ctx, content)
+		case "mark_unread":
+			ln.handleMarkUnread(ctx, content)
 		}
 	}
 }
@@ -466,6 +468,51 @@ func (ln *listener) handlePinnedConversations(ctx context.Context, content event
 		TS:     rawInt(d.TS),
 		Data:   content.RawData,
 	})
+}
+
+func (ln *listener) handleMarkUnread(ctx context.Context, content events.ControlContent) {
+	var d struct {
+		ConvsUser  []json.RawMessage `json:"convsUser"`
+		ConvsGroup []json.RawMessage `json:"convsGroup"`
+	}
+	if len(content.Content) > 0 {
+		if err := json.Unmarshal(content.Content, &d); err != nil {
+			ln.emitError(ctx, errs.WrapZCA("Failed to decode mark_unread content:", "listener.handleMarkUnread", err))
+			return
+		}
+	}
+
+	action := "add"
+	if content.Action == "remove" {
+		action = "remove"
+	}
+	emit(ctx, ln.ch.UnreadMark, model.UnreadMarkUpdate{
+		Action:   action,
+		UserIDs:  markUnreadIDs(d.ConvsUser),
+		GroupIDs: markUnreadIDs(d.ConvsGroup),
+	})
+}
+
+// markUnreadIDs accepts "add" items ({id, ts, fromUid, cliMsgId}) and "remove"
+// items (bare ids); entries without an id are skipped.
+func markUnreadIDs(items []json.RawMessage) []string {
+	ids := make([]string, 0, len(items))
+	for _, it := range items {
+		var obj struct {
+			ID json.RawMessage `json:"id"`
+		}
+		id := rawString(it)
+		if len(it) > 0 && it[0] == '{' {
+			id = ""
+			if json.Unmarshal(it, &obj) == nil {
+				id = rawString(obj.ID)
+			}
+		}
+		if id != "" {
+			ids = append(ids, id)
+		}
+	}
+	return ids
 }
 
 func (ln *listener) handleDuplicateConnection() {

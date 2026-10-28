@@ -24,6 +24,8 @@ type ControlContent struct {
 	// RawData is the control data with a string-encoded JSON layer removed, for
 	// act_types that have no typed decoder (pinned_convers, voip).
 	RawData json.RawMessage `json:"-"`
+	// Content is the nested content.content field (mark_unread), string layer removed.
+	Content json.RawMessage `json:"-"`
 }
 
 type controlData struct {
@@ -53,11 +55,13 @@ func (c *ControlContent) UnmarshalJSON(data []byte) error {
 		ActionType string          `json:"act_type"`
 		Action     string          `json:"act"`
 		Data       json.RawMessage `json:"data"`
+		Content    json.RawMessage `json:"content"`
 		FileID     *int64          `json:"fileId,omitempty"`
 	}
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return err
 	}
+	c.Content = unquoteJSON(raw.Content)
 
 	c.ActionType = raw.ActionType
 	c.Action = raw.Action
@@ -71,11 +75,7 @@ func (c *ControlContent) UnmarshalJSON(data []byte) error {
 		}
 		payload = []byte(s)
 	}
-	if json.Valid(payload) {
-		c.RawData = payload
-	} else {
-		c.RawData = raw.Data
-	}
+	c.RawData = unquoteJSON(raw.Data)
 
 	var cd controlData
 	switch c.ActionType {
@@ -211,4 +211,14 @@ func decodeFriendEvent(action string, data []byte) (model.TFriendEvent, bool) {
 	default:
 		return nil, false
 	}
+}
+
+// unquoteJSON removes one string-encoded JSON layer ("{...}" -> {...}); other
+// values are returned unchanged.
+func unquoteJSON(b json.RawMessage) json.RawMessage {
+	var s string
+	if len(b) > 0 && b[0] == '"' && json.Unmarshal(b, &s) == nil && json.Valid([]byte(s)) {
+		return json.RawMessage(s)
+	}
+	return b
 }

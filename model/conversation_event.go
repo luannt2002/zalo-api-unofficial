@@ -12,3 +12,11 @@ type PinConversationsUpdate struct {
 	TS     int64
 	Data   json.RawMessage // the decoded control data as received
 }
+
+// UnreadMarkUpdate: conversations marked ("add") or unmarked ("remove") as
+// unread on another device (cmd 601 act_type "mark_unread").
+type UnreadMarkUpdate struct {
+	Action   string // "add" or "remove"
+	UserIDs  []string
+	GroupIDs []string
+}

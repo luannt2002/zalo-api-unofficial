@@ -2,6 +2,7 @@ package listener
 
 import (
 	"context"
+	"slices"
 	"testing"
 	"time"
 
@@ -145,5 +146,30 @@ func TestRouterPinnedConversations(t *testing.T) {
 	second := recvOne(t, ln.PinConversations())
 	if second.Action != 2 || second.Tab != 1 || second.TS != 1700000000001 || len(second.PinIDs) != 1 || second.PinIDs[0] != "u201" {
 		t.Fatalf("second = %+v", second)
+	}
+}
+
+// cmd 601 act_type "mark_unread": đánh dấu / bỏ đánh dấu chưa đọc ở thiết bị khác. Dữ liệu ở
+// control.content.content (không phải data). add = mảng object {id,...}, remove = mảng id.
+func TestRouterMarkUnread(t *testing.T) {
+	ln := newRouterTestListener(t)
+	ln.router(context.Background(), 1, 601, 0, controlFrame(
+		`{"act_type":"mark_unread","act":"add","content":{"convsUser":[{"id":"200","ts":1,"fromUid":"200","cliMsgId":"5"},{"id":201}],"convsGroup":[{"id":"300","ts":2}]}}`,
+		`{"act_type":"mark_unread","act":"remove","content":"{\"convsUser\":[\"200\",202],\"convsGroup\":[\"300\"],\"convsUserData\":[{\"id\":\"200\"}]}"}`,
+		`{"act_type":"mark_unread","act":"add","content":{"convsUser":[{"ts":1},""]}}`,
+	))
+
+	add := recvOne(t, ln.UnreadMark())
+	if add.Action != "add" || !slices.Equal(add.UserIDs, []string{"200", "201"}) || !slices.Equal(add.GroupIDs, []string{"300"}) {
+		t.Fatalf("add = %+v", add)
+	}
+	remove := recvOne(t, ln.UnreadMark())
+	if remove.Action != "remove" || !slices.Equal(remove.UserIDs, []string{"200", "202"}) || !slices.Equal(remove.GroupIDs, []string{"300"}) {
+		t.Fatalf("remove = %+v", remove)
+	}
+	// Phần tử thiếu id bị bỏ, sự kiện vẫn phát (giống bản JS: lọc id rỗng).
+	empty := recvOne(t, ln.UnreadMark())
+	if empty.Action != "add" || len(empty.UserIDs) != 0 || len(empty.GroupIDs) != 0 {
+		t.Fatalf("empty = %+v", empty)
 	}
 }
