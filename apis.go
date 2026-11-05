@@ -1208,6 +1208,8 @@ type API interface {
 	TranslateViewerUID(ctx context.Context, req api.TranslateViewerUIDRequest) (*api.TranslateViewerUIDResponse, error)
 	// RenewLink requests renewed media download URLs for expired photos, files, or videos.
 	RenewLink(ctx context.Context, req api.RenewLinkRequest) (*api.RenewLinkResponse, error)
+	// RenewLinkWait executes full 2-phase renew flow: sends HTTP renewlink and awaits WS cmd 601 event.
+	RenewLinkWait(ctx context.Context, req api.RenewLinkRequest) (*api.RenewLinkResponse, error)
 	// GetMiniProfiles retrieves mini profiles (including real GID) for up to 100 UIDs per request chunk.
 	GetMiniProfiles(ctx context.Context, userIDs []string, opts ...api.MiniProfileOptions) (api.GetMiniProfilesResponse, error)
 	// ResolveUIDViaGID maps foreign global IDs (GIDs) to local user IDs in the current viewer's namespace.

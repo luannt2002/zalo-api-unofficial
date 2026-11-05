@@ -38,6 +38,9 @@ func DecryptMediaGCM(ciphertext, key, iv, tag []byte) ([]byte, error) {
 
 	plaintext, err := aesGCM.Open(nil, iv, payloadWithTag, nil)
 	if err != nil {
+		for i := range payloadWithTag {
+			payloadWithTag[i] = 0
+		}
 		return nil, errors.New("media: authentication failed")
 	}
 

@@ -52,6 +52,49 @@ func (a *api) RenewLink(ctx context.Context, req RenewLinkRequest) (*RenewLinkRe
 	return a.e.RenewLink(ctx, req)
 }
 
+// RenewLinkWait thực hiện quy trình renew 2 pha hoàn chỉnh:
+// Pha 1: Gửi yêu cầu HTTP renewlink (cmd 12094). Nếu server trả về kết quả đồng bộ ngay, hàm trả về luôn.
+// Pha 2: Nếu là bất đồng bộ (data.async == true), hàm sẽ chờ sự kiện RenewLinkEvent từ WebSocket listener (cmd 601)
+// khớp với ToID hoặc OriURL cho tới khi ctx hết hạn (deadline/timeout).
+func (a *api) RenewLinkWait(ctx context.Context, req RenewLinkRequest) (*RenewLinkResponse, error) {
+	resp, err := a.RenewLink(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.Normal != "" || resp.FileURL != "" || resp.HD != "" {
+		return resp, nil
+	}
+
+	if a.l == nil {
+		return resp, nil
+	}
+
+	ch := a.l.RenewLink()
+	for {
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case ev, ok := <-ch:
+			if !ok {
+				return resp, nil
+			}
+			for _, item := range ev.Items {
+				if item.DestID == req.ToID || (req.MsgInfo.OriURL != "" && item.OriginalURL == req.MsgInfo.OriURL) {
+					return &RenewLinkResponse{
+						Async:       false,
+						FileURL:     item.RenewURL,
+						Normal:      item.Normal,
+						HD:          item.HD,
+						Thumb:       item.Thumb,
+						ExpiredTime: item.ExpiredTime,
+					}, nil
+				}
+			}
+		}
+	}
+}
+
 var renewLinkFactory = apiFactory[*RenewLinkResponse, RenewLinkFn]()(
 	func(a *api, sc session.Context, u factoryUtils[*RenewLinkResponse]) (RenewLinkFn, error) {
 		base := jsonx.FirstOr(sc.GetZpwService("file"), "")

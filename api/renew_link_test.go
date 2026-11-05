@@ -25,3 +25,24 @@ func TestRenewLinkValidation(t *testing.T) {
 	}
 }
 
+func TestRenewLinkWaitSyncReturn(t *testing.T) {
+	a := &api{
+		e: endpoints{
+			RenewLink: func(ctx context.Context, req RenewLinkRequest) (*RenewLinkResponse, error) {
+				return &RenewLinkResponse{
+					Async:  false,
+					Normal: "http://renewed/normal.jpg",
+				}, nil
+			},
+		},
+	}
+
+	res, err := a.RenewLinkWait(context.Background(), RenewLinkRequest{ToID: "123"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if res.Normal != "http://renewed/normal.jpg" {
+		t.Fatalf("expected renewed normal url, got: %s", res.Normal)
+	}
+}
+
