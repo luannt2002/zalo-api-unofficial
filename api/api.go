@@ -43,6 +43,8 @@ type endpoints struct {
 	GetCloseFriends          GetCloseFriendsFn
 	GetMultiUsersByPhones    GetMultiUsersByPhonesFn
 	GetRelatedFriendGroup    GetRelatedFriendGroupFn
+	GetExtraFriendInfo       GetExtraFriendInfoFn
+	GetExtraGroupInfo        GetExtraGroupInfoFn
 	GetGroupMembersInfo      GetGroupMembersInfoFn
 	GetGroupChatHistory      GetGroupChatHistoryFn
 	GetGroupChatHistoryEx    GetGroupChatHistoryExFn
@@ -213,6 +215,8 @@ func (a *api) initEndpoints() error {
 		bind(a.sc, a, &a.e.GetCloseFriends, getCloseFriendsFactory),
 		bind(a.sc, a, &a.e.GetMultiUsersByPhones, getMultiUsersByPhonesFactory),
 		bind(a.sc, a, &a.e.GetRelatedFriendGroup, getRelatedFriendGroupFactory),
+		bind(a.sc, a, &a.e.GetExtraFriendInfo, getExtraFriendInfoFactory),
+		bind(a.sc, a, &a.e.GetExtraGroupInfo, getExtraGroupInfoFactory),
 		bind(a.sc, a, &a.e.GetGroupMembersInfo, getGroupMembersInfoFactory),
 		bind(a.sc, a, &a.e.GetGroupChatHistory, getGroupChatHistoryFactory),
 		bind(a.sc, a, &a.e.GetGroupChatHistoryEx, getGroupChatHistoryExFactory),

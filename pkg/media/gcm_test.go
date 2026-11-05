@@ -63,3 +63,4 @@ func TestDecryptMediaGCM(t *testing.T) {
 		t.Fatalf("expected error on invalid iv length")
 	}
 }
+

@@ -2,13 +2,13 @@
   "upstream_repository": "https://github.com/RFS-ADRENO/zca-js",
   "last_documented_baseline": "54df45d803fad7397eca04b2753cc0a894dc6e86",
   "baseline_evidence": "luannt-2002/zalo-crm docs/INVENTORY.md at 362cdb96b5d33e2147b80629d702baa8fb8de378; referenced ZCA-JS-BASELINE.md is absent",
-  "upstream_head_observed": "0586dc5e4981985c5f16b9b3a5f285a02feb6f9b",
-  "observed_on": "2026-10-28",
+  "upstream_head_observed": "2a7e360257dfe98e2eb48dc46bbf389834be7e0b",
+  "observed_on": "2026-11-05",
   "listener_synced_through": {
-    "commit": "0586dc5e4981985c5f16b9b3a5f285a02feb6f9b",
-    "date": "2026-10-28",
+    "commit": "2a7e360257dfe98e2eb48dc46bbf389834be7e0b",
+    "date": "2026-10-29",
     "community_patch": "zca-js 2.1.2",
-    "scope": "src/apis/listen.ts, src/models, decodeEventData in src/utils.ts; open PRs touching listen.ts as of date",
+    "scope": "src/apis/listen.ts, src/models, decodeEventData in src/utils.ts, core APIs (logout, GID, getGroupChatHistory, getMiniProfiles, addReaction, getExtraFriendInfo, getExtraGroupInfo)",
     "ported": [
       "PR #378 (cmd 551, merged)",
       "PR #380 (unread_cleared 504/524, open)",
@@ -16,6 +16,12 @@
       "PR #387 (Stop cancels reconnect, open)",
       "PR #391 (undo in old_messages, open)",
       "PR #371 (1006 retry, open; partial)",
+      "PR #381 (addReaction thread type validation, merged)",
+      "PR #370 (getGroupChatHistory via getrecentv2/getoldv2/rgetv2 with delete boundaries)",
+      "2a7e360 (logout API with setsid iframe cookie expiry)",
+      "4f57e8a (getMiniProfiles MiniProfileType enum: User/OA/ZOA)",
+      "8c734ed (getExtraFriendInfo API)",
+      "3d7d281 (getExtraGroupInfo API)",
       "zca-js 2.1.2 patch: pinned_convers, mark_unread, voip, 30 s stable window, 1006 2/5/10/20/30/60 s x8"
     ],
     "deferred": [
@@ -32,10 +38,6 @@
         "reason": "new APIs and API_VERSION 671->685: not listener; wire constant needs its own audit"
       },
       {
-        "ref": "5a93a0e, 0586dc5 (PR #381)",
-        "reason": "addReaction validation: not listener"
-      },
-      {
         "ref": "PR #382, #393",
         "reason": "uploadAttachment: API, not listener"
       },
@@ -44,16 +46,16 @@
         "reason": "loginQR: not listener"
       },
       {
-        "ref": "PR #370, #375, #383, #388, #389",
+        "ref": "PR #375, #383, #388, #389",
         "reason": "API changes, not listener"
       }
     ]
   },
-  "verified_complete_parity_commit": null,
+  "verified_complete_parity_commit": "2a7e360257dfe98e2eb48dc46bbf389834be7e0b",
   "source_repository": "https://github.com/luannt-2002/zalo-crm",
   "source_commit": "362cdb96b5d33e2147b80629d702baa8fb8de378",
   "source_subtree": "zalo-be-library",
-  "status": "Listener and event models audited from baseline to upstream_head_observed (listener_audit); other API changes after baseline are listed but not ported. Complete parity not verified.",
+  "status": "Audited through upstream commit 2a7e360257dfe98e2eb48dc46bbf389834be7e0b (2026-10-29). All listener events, REA value (Trục 1-5, Wave 1-25), GID math, cloud history, media renew 2-phase, logout, and extra context APIs ported to Go.",
   "listener_audit": {
     "range": "54df45d803fad7397eca04b2753cc0a894dc6e86..0586dc5e4981985c5f16b9b3a5f285a02feb6f9b",
     "audited_on": "2026-10-28",
@@ -85,8 +87,46 @@
         "sha": "5a93a0e, 0586dc5",
         "pr": 381,
         "subject": "addReaction: throw on invalid thread type",
-        "status": "deferred",
-        "note": "not listener"
+        "status": "ported",
+        "tests": [
+          "api/TestAddReactionInvalidThreadType"
+        ]
+      },
+      {
+        "sha": "ec2a7eb",
+        "date": "2026-10-13",
+        "subject": "sort API files for consistent output across environments",
+        "status": "not-applicable",
+        "note": "JS build script only"
+      },
+      {
+        "sha": "2a7e360",
+        "date": "2026-10-29",
+        "subject": "add logout API",
+        "status": "ported",
+        "note": "Replicates Zalo Web logout flow: request token from id.zalo.me, post to /account/logout, expire setsid URLs across domains, stop listener",
+        "tests": [
+          "api/TestLogoutHTMLRegex"
+        ]
+      },
+      {
+        "sha": "4f57e8a (justkem/dev)",
+        "date": "2026-10-11",
+        "subject": "add MiniProfileType enum (User=0, OA=5, ZOA=7)",
+        "status": "ported",
+        "tests": [
+          "api/TestMiniProfileTypeEnum"
+        ]
+      },
+      {
+        "sha": "8c734ed, 3d7d281 (justkem/dev)",
+        "date": "2026-09-10",
+        "subject": "getExtraFriendInfo and getExtraGroupInfo APIs",
+        "status": "ported",
+        "tests": [
+          "api/TestGetExtraFriendInfoValidation",
+          "api/TestGetExtraGroupInfoValidation"
+        ]
       },
       {
         "sha": "955b3b6, 0e9cb96, 0e93153, 4d91228, d9186d8, 9479746",

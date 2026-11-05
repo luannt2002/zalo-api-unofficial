@@ -42,3 +42,4 @@ var ErrInvalidThreadType = &mockErr{"thread type is invalid"}
 type mockErr struct{ msg string }
 
 func (m *mockErr) Error() string { return m.msg }
+

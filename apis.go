@@ -22,6 +22,8 @@ type API interface {
 	GetCloseFriends(ctx context.Context) (*api.GetCloseFriendsResponse, error)
 	GetMultiUsersByPhones(ctx context.Context, phoneNumbers []string, avatarSize ...api.AvatarSize) (*api.GetMultiUsersByPhonesResponse, error)
 	GetRelatedFriendGroup(ctx context.Context, friendID ...string) (*api.GetRelatedFriendGroupResponse, error)
+	GetExtraFriendInfo(ctx context.Context, friendIDs ...string) (api.GetExtraFriendInfoResponse, error)
+	GetExtraGroupInfo(ctx context.Context, groupIDs ...string) (api.GetExtraGroupInfoResponse, error)
 	GetGroupMembersInfo(ctx context.Context, memberID ...string) (*api.GetGroupMembersInfoResponse, error)
 	GetGroupChatHistory(ctx context.Context, groupID string, count int) (*api.GetGroupChatHistoryResponse, error)
 	GetGroupChatHistoryEx(ctx context.Context, req api.GetGroupChatHistoryRequest) (*api.GetGroupChatHistoryResponse, error)
