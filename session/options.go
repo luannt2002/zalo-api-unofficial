@@ -20,7 +20,23 @@ type OptionsSnapshot struct {
 	Client              *http.Client
 	ProxyURL            *url.URL
 	ImageMetadataGetter ImageMetadataGetter
+	DebugTrace          DebugTraceFn
 }
+
+type DebugTraceEvent struct {
+	Kind       string `json:"kind"` // "http", "api_response", "ws_frame", "ws_control"
+	Phase      string `json:"phase,omitempty"`
+	Endpoint   string `json:"endpoint,omitempty"`
+	Method     string `json:"method,omitempty"`
+	Status     int    `json:"status,omitempty"`
+	DurationMs int64  `json:"durationMs,omitempty"`
+	CMD        int    `json:"cmd,omitempty"`
+	SubCMD     int    `json:"subCmd,omitempty"`
+	Bytes      int    `json:"bytes,omitempty"`
+	Message    string `json:"message,omitempty"`
+}
+
+type DebugTraceFn func(event DebugTraceEvent)
 
 type options struct {
 	selfListen  bool
@@ -39,13 +55,15 @@ type options struct {
 	proxyURL *url.URL
 
 	imageMetadataGetter ImageMetadataGetter
+	debugTrace          DebugTraceFn
 }
 
-func WithSelfListen(v bool) Option         { return func(o *options) { o.selfListen = v } }
-func WithCheckUpdate(v bool) Option        { return func(o *options) { o.checkUpdate = v } }
-func WithLogging(v bool) Option            { return func(o *options) { o.logging = v } }
-func WithLogLevel(level uint8) Option      { return func(o *options) { o.logLevel = level } }
-func WithHTTPClient(c *http.Client) Option { return func(o *options) { o.client = c } }
+func WithDebugTrace(fn DebugTraceFn) Option { return func(o *options) { o.debugTrace = fn } }
+func WithSelfListen(v bool) Option          { return func(o *options) { o.selfListen = v } }
+func WithCheckUpdate(v bool) Option         { return func(o *options) { o.checkUpdate = v } }
+func WithLogging(v bool) Option             { return func(o *options) { o.logging = v } }
+func WithLogLevel(level uint8) Option       { return func(o *options) { o.logLevel = level } }
+func WithHTTPClient(c *http.Client) Option  { return func(o *options) { o.client = c } }
 
 // WithProxy routes all session traffic (REST + WebSocket) through the given
 // HTTP/HTTPS proxy URL, e.g. "http://user:pass@host:port" or "https://host:port".

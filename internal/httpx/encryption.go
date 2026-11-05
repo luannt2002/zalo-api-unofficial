@@ -1,6 +1,8 @@
 package httpx
 
 import (
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/md5"
 	"crypto/rand"
 	"encoding/hex"
@@ -8,6 +10,7 @@ import (
 	"fmt"
 	"maps"
 	"math/big"
+	"strconv"
 	"strings"
 	"time"
 
@@ -103,6 +106,47 @@ func (pe *paramsEncryptor) createZCID(apiType uint, imei string, firstLaunchTime
 
 	pe.ZCID = strings.ToUpper(s)
 	return nil
+}
+
+// DecodeZCID giải mã chuỗi zcid hex bằng khóa DefaultZCIDKey để trích xuất apiType, imei và firstLaunchTime.
+// Tương đương hàm decodeZcid trong transport/params-encryptor.mjs của luồng REA.
+func DecodeZCID(zcidHex string) (apiType uint, imei string, firstLaunchTime int64, err error) {
+	key := config.DefaultZCIDKey
+	ciphertext, err := hex.DecodeString(zcidHex)
+	if err != nil {
+		return 0, "", 0, fmt.Errorf("httpx: hex decode zcid: %w", err)
+	}
+
+	block, err := aes.NewCipher([]byte(key))
+	if err != nil {
+		return 0, "", 0, fmt.Errorf("httpx: new cipher: %w", err)
+	}
+
+	iv := make([]byte, aes.BlockSize)
+	plain := make([]byte, len(ciphertext))
+	cipher.NewCBCDecrypter(block, iv).CryptBlocks(plain, ciphertext)
+
+	plain, err = cryptox.Pkcs7Unpadding(plain, aes.BlockSize)
+	if err != nil {
+		return 0, "", 0, fmt.Errorf("httpx: pkcs7 unpadding: %w", err)
+	}
+
+	parts := strings.Split(string(plain), ",")
+	if len(parts) < 3 {
+		return 0, "", 0, fmt.Errorf("httpx: malformed zcid plaintext: %q", string(plain))
+	}
+
+	typeVal, err := strconv.ParseUint(parts[0], 10, 32)
+	if err != nil {
+		return 0, "", 0, fmt.Errorf("httpx: parse zcid apiType: %w", err)
+	}
+
+	flt, err := strconv.ParseInt(parts[2], 10, 64)
+	if err != nil {
+		return 0, "", 0, fmt.Errorf("httpx: parse zcid firstLaunchTime: %w", err)
+	}
+
+	return uint(typeVal), parts[1], flt, nil
 }
 
 func (pe *paramsEncryptor) createEncryptKey() error {

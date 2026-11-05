@@ -5,6 +5,7 @@ import (
 	"sync/atomic"
 
 	"github.com/luannt2002/zalo-api-unofficial/internal/websocketx"
+	"github.com/luannt2002/zalo-api-unofficial/listener/events"
 	"github.com/luannt2002/zalo-api-unofficial/model"
 )
 
@@ -29,6 +30,9 @@ type Buffers struct {
 	PinConversations  int
 	UnreadMark        int
 	Voip              int
+	RenewLink         int
+	PhotoSuccess      int
+	ResetCloud        int
 	Unhandled         int
 }
 
@@ -58,6 +62,9 @@ func defaultBuffers() Buffers {
 		PinConversations:  64,
 		UnreadMark:        64,
 		Voip:              64,
+		RenewLink:         64,
+		PhotoSuccess:      64,
+		ResetCloud:        16,
 		Unhandled:         64,
 	}
 }
@@ -83,6 +90,9 @@ type channels struct {
 	PinConversations  chan model.PinConversationsUpdate
 	UnreadMark        chan model.UnreadMarkUpdate
 	Voip              chan model.VoipEvent
+	RenewLink         chan events.RenewLinkEvent
+	PhotoSuccess      chan events.PhotoSuccessEvent
+	ResetCloud        chan events.ResetCloudEvent
 	Unhandled         chan RawFrame
 }
 
@@ -109,9 +119,12 @@ func (ln *listener) UnreadCleared() <-chan []model.ClearUnread       { return ln
 func (ln *listener) PinConversations() <-chan model.PinConversationsUpdate {
 	return ln.ch.PinConversations
 }
-func (ln *listener) UnreadMark() <-chan model.UnreadMarkUpdate { return ln.ch.UnreadMark }
-func (ln *listener) Voip() <-chan model.VoipEvent              { return ln.ch.Voip }
-func (ln *listener) Unhandled() <-chan RawFrame                { return ln.ch.Unhandled }
+func (ln *listener) UnreadMark() <-chan model.UnreadMarkUpdate     { return ln.ch.UnreadMark }
+func (ln *listener) Voip() <-chan model.VoipEvent                  { return ln.ch.Voip }
+func (ln *listener) RenewLink() <-chan events.RenewLinkEvent       { return ln.ch.RenewLink }
+func (ln *listener) PhotoSuccess() <-chan events.PhotoSuccessEvent { return ln.ch.PhotoSuccess }
+func (ln *listener) ResetCloud() <-chan events.ResetCloudEvent     { return ln.ch.ResetCloud }
+func (ln *listener) Unhandled() <-chan RawFrame                    { return ln.ch.Unhandled }
 
 func (ln *listener) emitError(ctx context.Context, err error) {
 	if ctx.Err() != nil {

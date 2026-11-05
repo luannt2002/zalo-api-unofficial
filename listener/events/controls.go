@@ -37,6 +37,39 @@ type controlData struct {
 	UploadAttachment *uploadFileInfo
 	GroupEvent       model.TGroupEvent
 	FriendEvent      model.TFriendEvent
+	RenewLink        *RenewLinkEvent
+	PhotoSuccess     *PhotoSuccessEvent
+}
+
+type RenewLinkItem struct {
+	Img         string `json:"img"`
+	OriginalURL string `json:"originalUrl"`
+	Normal      string `json:"normal"`
+	HD          string `json:"hd"`
+	Thumb       string `json:"thumb"`
+	RenewURL    string `json:"renewUrl"`
+	DestID      string `json:"destId"`
+	DestType    int    `json:"destType"`
+	ErrorCode   int    `json:"errorCode"`
+	ExpiredTime int64  `json:"expiredTime"`
+}
+
+type RenewLinkEvent struct {
+	ActionType string          `json:"act_type"`
+	Action     string          `json:"act"`
+	Items      []RenewLinkItem `json:"data"`
+}
+
+type PhotoSuccessEvent struct {
+	ActionType string          `json:"act_type"`
+	Action     string          `json:"act"`
+	FileID     int64           `json:"fileId"`
+	Data       json.RawMessage `json:"data"`
+}
+
+type ResetCloudEvent struct {
+	CMD     int             `json:"cmd"`
+	RawData json.RawMessage `json:"rawData"`
 }
 
 type uploadFileInfo struct {
@@ -94,6 +127,28 @@ func (c *ControlContent) UnmarshalJSON(data []byte) error {
 		cd.GroupEvent, err = decodeGroupEvent(raw.Action, payload)
 	case "fr":
 		cd.FriendEvent, err = decodeFriendEvent(raw.Action, payload)
+	case "photo", "file", "video":
+		if raw.Action == "renew_link" {
+			var items []RenewLinkItem
+			if err = jsonx.UnmarshalLenient(payload, &items); err == nil {
+				cd.RenewLink = &RenewLinkEvent{
+					ActionType: raw.ActionType,
+					Action:     raw.Action,
+					Items:      items,
+				}
+			}
+		}
+	case "photo_success":
+		fileID := int64(0)
+		if raw.FileID != nil {
+			fileID = *raw.FileID
+		}
+		cd.PhotoSuccess = &PhotoSuccessEvent{
+			ActionType: raw.ActionType,
+			Action:     raw.Action,
+			FileID:     fileID,
+			Data:       payload,
+		}
 	}
 	if err != nil {
 		// Keep the other controls of the frame; the listener reports this one.

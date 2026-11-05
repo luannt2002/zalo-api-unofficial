@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/luannt2002/zalo-api-unofficial/config"
 	"github.com/luannt2002/zalo-api-unofficial/internal/cryptox"
@@ -91,7 +92,22 @@ func executeRequest(sc session.MutableContext, req *http.Request, followRedirect
 		client = &cloned
 	}
 
-	return client.Do(req)
+	start := time.Now()
+	resp, err := client.Do(req)
+	duration := time.Since(start).Milliseconds()
+	status := 0
+	if resp != nil {
+		status = resp.StatusCode
+	}
+	sc.EmitDebugTrace(session.DebugTraceEvent{
+		Kind:       "http",
+		Phase:      "response",
+		Endpoint:   req.URL.Path,
+		Method:     req.Method,
+		Status:     status,
+		DurationMs: duration,
+	})
+	return resp, err
 }
 
 func handleZaloResponse[T any](sc session.Context, resp *http.Response, isEncrypted bool) *ZaloResponse[T] {

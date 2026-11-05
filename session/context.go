@@ -22,6 +22,7 @@ type Context interface {
 	LogLevel() uint8
 	CheckUpdate() bool
 	GetImageMetadata(path string) (model.AttachmentMetadata, string, error)
+	EmitDebugTrace(event DebugTraceEvent)
 
 	CookieJar() http.CookieJar
 	SecretKey() SecretKey
@@ -32,6 +33,10 @@ type Context interface {
 
 	ZPWWebsocket() []string
 	WSPingInterval() time.Duration
+
+	Send2meID() string
+	IsSend2me(id string) bool
+	UID9() string
 
 	ZPWServiceMap() *ZpwServiceMap
 	GetZpwService(service string) []string

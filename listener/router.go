@@ -60,6 +60,9 @@ func (ln *listener) router(ctx context.Context, version, cmd, sub uint, body Bas
 	case "1_612_0":
 		ln.handleReactions(ctx, body)
 
+	case "1_620_0":
+		ln.handleResetCloud(ctx, body)
+
 	case "1_3000_0":
 		ln.handleDuplicateConnection()
 
@@ -454,10 +457,31 @@ func (ln *listener) handleControls(ctx context.Context, body BaseWSMessage) {
 			ln.handleMarkUnread(ctx, content)
 		case "voip":
 			offer(ln.ch.Voip, model.VoipEvent{Act: content.Action, Data: content.RawData}, &droppedOptional)
+		case "photo", "file", "video":
+			if content.Data.RenewLink != nil {
+				offer(ln.ch.RenewLink, *content.Data.RenewLink, &droppedOptional)
+			} else {
+				ln.emitUnhandled(RawFrame{Version: 1, CMD: 601, ActType: content.ActionType, Act: content.Action, Data: content.RawData})
+			}
+		case "photo_success":
+			if content.Data.PhotoSuccess != nil {
+				offer(ln.ch.PhotoSuccess, *content.Data.PhotoSuccess, &droppedOptional)
+			}
 		default:
 			ln.emitUnhandled(RawFrame{Version: 1, CMD: 601, ActType: content.ActionType, Act: content.Action, Data: content.RawData})
 		}
 	}
+}
+
+func (ln *listener) handleResetCloud(ctx context.Context, body BaseWSMessage) {
+	rawData := json.RawMessage(nil)
+	if d, err := decodeEventData[json.RawMessage](body, ln.key()); err == nil {
+		rawData = d.Data
+	}
+	offer(ln.ch.ResetCloud, events.ResetCloudEvent{
+		CMD:     620,
+		RawData: rawData,
+	}, &droppedOptional)
 }
 
 func (ln *listener) handleFileDone(ctx context.Context, content events.ControlContent) {

@@ -11,6 +11,8 @@ import (
 type (
 	LoginQREvent    auth.LoginQREvent
 	LoginQRCallback auth.LoginQRCallback
+	DebugTraceEvent = session.DebugTraceEvent
+	DebugTraceFn    = session.DebugTraceFn
 )
 
 type LoginQROption struct {
@@ -31,9 +33,10 @@ func loginQR(ctx context.Context, sc session.MutableContext, qrPath string, cb L
 	return auth.LoginQR(ctx, sc, qrPath, auth.LoginQRCallback(cb))
 }
 
-func WithSelfListen(v bool) session.Option  { return session.WithSelfListen(v) }
-func WithCheckUpdate(v bool) session.Option { return session.WithCheckUpdate(v) }
-func WithLogging(v bool) session.Option     { return session.WithLogging(v) }
+func WithSelfListen(v bool) session.Option                  { return session.WithSelfListen(v) }
+func WithDebugTrace(fn session.DebugTraceFn) session.Option { return session.WithDebugTrace(fn) }
+func WithCheckUpdate(v bool) session.Option                 { return session.WithCheckUpdate(v) }
+func WithLogging(v bool) session.Option                     { return session.WithLogging(v) }
 
 // WithLogLevel sets the logging verbosity for a session.
 //
@@ -55,8 +58,8 @@ func WithHTTPClient(c *http.Client) session.Option { return session.WithHTTPClie
 // An empty string is a no-op (direct connection). SOCKS5 proxies are also
 // supported via socks5:// URLs (handled by net/http.Transport).
 func WithProxy(proxyURL string) session.Option { return session.WithProxy(proxyURL) }
-func WithAPIType(t uint) session.Option            { return session.WithAPIType(t) }
-func WithAPIVersion(v uint) session.Option         { return session.WithAPIVersion(v) }
+func WithAPIType(t uint) session.Option        { return session.WithAPIType(t) }
+func WithAPIVersion(v uint) session.Option     { return session.WithAPIVersion(v) }
 
 func WithImageMetadataGetter(f session.ImageMetadataGetter) session.Option {
 	return session.WithImageMetadataGetter(f)

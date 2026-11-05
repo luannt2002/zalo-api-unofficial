@@ -14,6 +14,7 @@ import (
 	"github.com/luannt2002/zalo-api-unofficial/internal/httpx"
 	"github.com/luannt2002/zalo-api-unofficial/internal/logger"
 	"github.com/luannt2002/zalo-api-unofficial/internal/websocketx"
+	"github.com/luannt2002/zalo-api-unofficial/listener/events"
 	"github.com/luannt2002/zalo-api-unofficial/model"
 	"github.com/luannt2002/zalo-api-unofficial/session"
 )
@@ -57,6 +58,12 @@ type Listener interface {
 	UnreadMark() <-chan model.UnreadMarkUpdate
 	// Call signaling, raw (cmd 601 "voip").
 	Voip() <-chan model.VoipEvent
+	// Renew link responses pushed via websocket (cmd 601 "renew_link").
+	RenewLink() <-chan events.RenewLinkEvent
+	// Photo upload success events (cmd 601 "photo_success").
+	PhotoSuccess() <-chan events.PhotoSuccessEvent
+	// Cloud reset events (cmd 620).
+	ResetCloud() <-chan events.ResetCloudEvent
 	// Frames/controls with no handler (diagnostics; full channel drops, see UnhandledFrames).
 	Unhandled() <-chan RawFrame
 
@@ -552,6 +559,9 @@ func initializeChannels() channels {
 		PinConversations:  make(chan model.PinConversationsUpdate, buf.PinConversations),
 		UnreadMark:        make(chan model.UnreadMarkUpdate, buf.UnreadMark),
 		Voip:              make(chan model.VoipEvent, buf.Voip),
+		RenewLink:         make(chan events.RenewLinkEvent, buf.RenewLink),
+		PhotoSuccess:      make(chan events.PhotoSuccessEvent, buf.PhotoSuccess),
+		ResetCloud:        make(chan events.ResetCloudEvent, buf.ResetCloud),
 		Unhandled:         make(chan RawFrame, buf.Unhandled),
 	}
 }

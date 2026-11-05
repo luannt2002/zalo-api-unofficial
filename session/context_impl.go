@@ -18,6 +18,7 @@ type contextImpl struct {
 	mu sync.RWMutex
 
 	uid       string
+	uid9      string
 	imei      string
 	userAgent string
 	language  string
@@ -94,6 +95,7 @@ func newContextImpl(optFns ...Option) *contextImpl {
 			Client:              client,
 			ProxyURL:            cfg.proxyURL,
 			ImageMetadataGetter: cfg.imageMetadataGetter,
+			DebugTrace:          cfg.debugTrace,
 		},
 		jar:             jar,
 		uploadCallbacks: NewCallbacksMap(),
@@ -139,6 +141,7 @@ func applyProxy(client *http.Client, proxyURL *url.URL) *http.Client {
 
 type Seal struct {
 	UID       string
+	UID9      string
 	IMEI      string
 	UserAgent string
 	Language  string
@@ -158,6 +161,11 @@ func (c *contextImpl) SealLogin(s Seal) {
 		c.jar = s.Jar
 	}
 	c.uid = s.UID
+	if s.UID9 != "" {
+		c.uid9 = s.UID9
+	} else if c.jar != nil {
+		c.uid9 = ExtractUID9FromJar(c.jar)
+	}
 	c.imei = s.IMEI
 	if s.UserAgent != "" {
 		c.userAgent = s.UserAgent
@@ -209,10 +217,23 @@ func (c *contextImpl) AsReadOnly() Context { return c }
 // Context API
 // ----------------------------------------
 
+func (c *contextImpl) EmitDebugTrace(event DebugTraceEvent) {
+	if c.opts.DebugTrace != nil {
+		defer func() { _ = recover() }()
+		c.opts.DebugTrace(event)
+	}
+}
+
 func (c *contextImpl) UID() string {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.uid
+}
+
+func (c *contextImpl) UID9() string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.uid9
 }
 
 func (c *contextImpl) IMEI() string {
@@ -283,6 +304,20 @@ func (c *contextImpl) UploadCallback() *CallbacksMap {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	return c.uploadCallbacks
+}
+
+func (c *contextImpl) Send2meID() string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	if c.loginInfo == nil {
+		return ""
+	}
+	return c.loginInfo.Send2meID
+}
+
+func (c *contextImpl) IsSend2me(id string) bool {
+	s := c.Send2meID()
+	return s != "" && s == id
 }
 
 func (c *contextImpl) ZPWServiceMap() *ZpwServiceMap {
