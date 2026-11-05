@@ -6,7 +6,7 @@ import (
 	"github.com/luannt2002/zalo-api-unofficial/session"
 )
 
-const version = "v0.3.0"
+const version = "v0.4.0"
 
 func GetVersion() string {
 	return version
