@@ -46,6 +46,10 @@ var addReactionFactory = apiFactory[*AddReactionResponse, AddReactionFn]()(
 		}
 
 		return func(ctx context.Context, dest AddReactionDestination, reaction model.ReactionData) (*AddReactionResponse, error) {
+			if dest.Type != model.ThreadTypeUser && dest.Type != model.ThreadTypeGroup {
+				return nil, errs.NewZCA("thread type is invalid", "api.AddReaction")
+			}
+
 			if !reaction.IsValid() {
 				return nil, ErrInvalidReaction
 			}

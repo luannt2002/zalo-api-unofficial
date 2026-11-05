@@ -45,6 +45,7 @@ type endpoints struct {
 	GetRelatedFriendGroup    GetRelatedFriendGroupFn
 	GetGroupMembersInfo      GetGroupMembersInfoFn
 	GetGroupChatHistory      GetGroupChatHistoryFn
+	GetGroupChatHistoryEx    GetGroupChatHistoryExFn
 	UpgradeGroupToCommunity  UpgradeGroupToCommunityFn
 	SearchSticker            SearchStickerFn
 	GetStickerCategoryDetail GetStickerCategoryDetailFn
@@ -131,6 +132,7 @@ type endpoints struct {
 	LastOnline                  LastOnlineFn
 	LeaveGroup                  LeaveGroupFn
 	LockPoll                    LockPollFn
+	Logout                      LogoutFn
 	ParseLink                   ParseLinkFn
 	RejectFriendRequest         RejectFriendRequestFn
 	RemoveAlias                 RemoveAliasFn
@@ -186,6 +188,15 @@ type endpoints struct {
 	UploadPhoto                 UploadPhotoFn
 	UploadThumbnail             UploadThumbnailFn
 	VotePoll                    VotePollFn
+
+	// REA extensions (GID translation, send2me, renewlink, miniprofiles)
+	EncryptGlobalID    EncryptGlobalIDFn
+	DecryptGlobalID    DecryptGlobalIDFn
+	ConvertGlobalID    ConvertGlobalIDFn
+	TranslateViewerUID TranslateViewerUIDFn
+	RenewLink          RenewLinkFn
+	GetMiniProfiles    GetMiniProfilesFn
+	GetZNoise          GetZNoiseFn
 }
 
 func (a *api) initEndpoints() error {
@@ -204,6 +215,7 @@ func (a *api) initEndpoints() error {
 		bind(a.sc, a, &a.e.GetRelatedFriendGroup, getRelatedFriendGroupFactory),
 		bind(a.sc, a, &a.e.GetGroupMembersInfo, getGroupMembersInfoFactory),
 		bind(a.sc, a, &a.e.GetGroupChatHistory, getGroupChatHistoryFactory),
+		bind(a.sc, a, &a.e.GetGroupChatHistoryEx, getGroupChatHistoryExFactory),
 		bind(a.sc, a, &a.e.UpgradeGroupToCommunity, upgradeGroupToCommunityFactory),
 		bind(a.sc, a, &a.e.SearchSticker, searchStickerFactory),
 		bind(a.sc, a, &a.e.GetStickerCategoryDetail, getStickerCategoryDetailFactory),
@@ -290,6 +302,7 @@ func (a *api) initEndpoints() error {
 		bind(a.sc, a, &a.e.LastOnline, lastOnlineFactory),
 		bind(a.sc, a, &a.e.LeaveGroup, leaveGroupFactory),
 		bind(a.sc, a, &a.e.LockPoll, lockPollFactory),
+		bind(a.sc, a, &a.e.Logout, logoutFactory),
 		bind(a.sc, a, &a.e.ParseLink, parseLinkFactory),
 		bind(a.sc, a, &a.e.RejectFriendRequest, rejectFriendRequestFactory),
 		bind(a.sc, a, &a.e.RemoveAlias, removeAliasFactory),
@@ -345,6 +358,15 @@ func (a *api) initEndpoints() error {
 		bind(a.sc, a, &a.e.UploadPhoto, uploadPhotoFactory),
 		bind(a.sc, a, &a.e.UploadThumbnail, uploadThumbnailFactory),
 		bind(a.sc, a, &a.e.VotePoll, votePollFactory),
+
+		// REA extensions
+		bind(a.sc, a, &a.e.EncryptGlobalID, encryptGlobalIDFactory),
+		bind(a.sc, a, &a.e.DecryptGlobalID, decryptGlobalIDFactory),
+		bind(a.sc, a, &a.e.ConvertGlobalID, convertGlobalIDFactory),
+		bind(a.sc, a, &a.e.TranslateViewerUID, translateViewerUIDFactory),
+		bind(a.sc, a, &a.e.RenewLink, renewLinkFactory),
+		bind(a.sc, a, &a.e.GetMiniProfiles, getMiniProfilesFactory),
+		bind(a.sc, a, &a.e.GetZNoise, getZNoiseFactory),
 	)
 }
 
@@ -423,4 +445,9 @@ func firstErr(errs ...error) error {
 		}
 	}
 	return nil
+}
+
+// GetUID9 trả về permanent legacy account ID (thường là 9 chữ số) trích xuất từ cookie phiên (zpw_sek hoặc zpsid).
+func (a *api) GetUID9() string {
+	return a.sc.UID9()
 }

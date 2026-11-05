@@ -162,6 +162,7 @@ func (z *zalo) loginCookie(ctx context.Context, sc session.MutableContext, cred 
 
 	sc.SealLogin(session.Seal{
 		UID:       loginInfo.UID,
+		UID9:      cred.UID9(),
 		IMEI:      cred.IMEI,
 		UserAgent: cred.UserAgent,
 		Language:  lang,

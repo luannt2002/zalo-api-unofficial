@@ -24,6 +24,7 @@ type API interface {
 	GetRelatedFriendGroup(ctx context.Context, friendID ...string) (*api.GetRelatedFriendGroupResponse, error)
 	GetGroupMembersInfo(ctx context.Context, memberID ...string) (*api.GetGroupMembersInfoResponse, error)
 	GetGroupChatHistory(ctx context.Context, groupID string, count int) (*api.GetGroupChatHistoryResponse, error)
+	GetGroupChatHistoryEx(ctx context.Context, req api.GetGroupChatHistoryRequest) (*api.GetGroupChatHistoryResponse, error)
 	UpgradeGroupToCommunity(ctx context.Context, groupID string) (api.UpgradeGroupToCommunityResponse, error)
 	SearchSticker(ctx context.Context, keyword string, limit int) (*api.SearchStickerResponse, error)
 	GetStickerCategoryDetail(ctx context.Context, cateID int) (*api.GetStickerCategoryDetailResponse, error)
@@ -643,6 +644,8 @@ type API interface {
 	//
 	// Errors: errs.ZaloAPIError
 	LockPoll(ctx context.Context, pollID int) (api.LockPollResponse, error)
+	// Logout đăng xuất tài khoản hiện tại, vô hiệu hóa session cookies trên mọi domain và dừng listener.
+	Logout(ctx context.Context) (*api.LogoutResponse, error)
 	// ParseLink parses a link and returns its metadata.
 	//
 	// Params:
@@ -1185,4 +1188,32 @@ type API interface {
 	//
 	// Errors: errs.ZaloAPIError
 	VotePoll(ctx context.Context, pollID string, optionID ...int) (*api.VotePollResponse, error)
+
+	// REA extensions (Identity Resolution, Send2me, Media Renewal)
+
+	// GetSend2meID returns the send2me_id (Cloud của tôi thread ID).
+	GetSend2meID() string
+	// IsSend2me checks whether a thread/user ID is the Cloud của tôi account.
+	IsSend2me(id string) bool
+	// GetUID9 returns the permanent legacy account ID (typically 9 digits) extracted from session cookies.
+	GetUID9() string
+
+	// EncryptGlobalID converts local user IDs to global IDs (GID).
+	EncryptGlobalID(ctx context.Context, req api.EncryptGlobalIDRequest) (api.EncryptGlobalIDResponse, error)
+	// DecryptGlobalID converts global IDs (GID) back to local user IDs.
+	DecryptGlobalID(ctx context.Context, req api.DecryptGlobalIDRequest) (api.DecryptGlobalIDResponse, error)
+	// ConvertGlobalID provides bidirectional conversion (encode/decode) between UID and GID.
+	ConvertGlobalID(ctx context.Context, req api.ConvertGlobalIDRequest) (*api.ConvertGlobalIDResponse, error)
+	// TranslateViewerUID computes cross-account viewer UID translation offline using XOR mask.
+	TranslateViewerUID(ctx context.Context, req api.TranslateViewerUIDRequest) (*api.TranslateViewerUIDResponse, error)
+	// RenewLink requests renewed media download URLs for expired photos, files, or videos.
+	RenewLink(ctx context.Context, req api.RenewLinkRequest) (*api.RenewLinkResponse, error)
+	// GetMiniProfiles retrieves mini profiles (including real GID) for up to 100 UIDs per request chunk.
+	GetMiniProfiles(ctx context.Context, userIDs []string, opts ...api.MiniProfileOptions) (api.GetMiniProfilesResponse, error)
+	// ResolveUIDViaGID maps foreign global IDs (GIDs) to local user IDs in the current viewer's namespace.
+	ResolveUIDViaGID(ctx context.Context, globalIDs ...string) (map[string]string, error)
+	// HarvestGroup harvests group metadata and all member GIDs in exactly 2 network calls (0 /api/gid/* calls).
+	HarvestGroup(ctx context.Context, groupID string) (*api.GroupHarvestResult, error)
+	// GetZNoise retrieves context-dependent noise IDs (negative int64) used in voicecall signaling (cmd 12390).
+	GetZNoise(ctx context.Context, req api.GetZNoiseRequest) (*api.GetZNoiseResponse, error)
 }
