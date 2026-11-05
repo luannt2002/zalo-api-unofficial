@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/luannt2002/zalo-api-unofficial/errs"
+	"github.com/luannt2002/zalo-api-unofficial/session"
 )
 
 // Credentials represents authentication data needed for Zalo login.
@@ -30,6 +31,33 @@ func NewCredentials(imei string, cookie CookieUnion, userAgent string, language 
 
 func (c Credentials) IsValid() bool {
 	return len(c.IMEI) > 0 && (c.Cookie == nil || c.Cookie.IsValid()) && len(c.UserAgent) > 0
+}
+
+// UID9 extracts the permanent legacy account ID (typically 9 digits) from credentials' cookies.
+func (c Credentials) UID9() string {
+	if c.Cookie == nil {
+		return ""
+	}
+	for _, ck := range c.Cookie.GetCookies() {
+		if ck.Name == "zpw_sek" || ck.Name == "zpsid" {
+			if id := session.ExtractUID9(ck.Value); id != "" {
+				return id
+			}
+		}
+	}
+	return ""
+}
+
+// ExtractUID9 extracts the permanent legacy account ID (typically 9 digits)
+// from a zpw_sek or zpsid cookie value (tag.UID9.selector.secret).
+func ExtractUID9(cookieValue string) string {
+	return session.ExtractUID9(cookieValue)
+}
+
+// ExtractUID9FromJar inspects cookies in jar for chat.zalo.me, zalo.me, and id.zalo.me
+// looking for zpw_sek or zpsid to extract the permanent UID9.
+func ExtractUID9FromJar(jar http.CookieJar) string {
+	return session.ExtractUID9FromJar(jar)
 }
 
 type SameSite string
@@ -74,6 +102,36 @@ type Cookie struct {
 	Session        bool     `json:"session"`
 	StoreID        *string  `json:"storeId,omitempty"`
 	Value          string   `json:"value"`
+}
+
+func (c *Cookie) UnmarshalJSON(data []byte) error {
+	type alias Cookie
+	var raw struct {
+		alias
+		Key    string          `json:"key"`
+		MaxAge float64         `json:"maxAge"`
+		ExpRaw json.RawMessage `json:"expires"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	*c = Cookie(raw.alias)
+	if c.Name == "" && raw.Key != "" {
+		c.Name = raw.Key
+	}
+	if c.ExpirationDate == 0 {
+		if raw.MaxAge > 0 {
+			c.ExpirationDate = float64(time.Now().Unix()) + raw.MaxAge
+		} else if len(raw.ExpRaw) > 0 {
+			var expStr string
+			if err := json.Unmarshal(raw.ExpRaw, &expStr); err == nil {
+				if t, err := time.Parse(time.RFC3339Nano, expStr); err == nil {
+					c.ExpirationDate = float64(t.UnixNano()) / 1e9
+				}
+			}
+		}
+	}
+	return nil
 }
 
 func (c Cookie) ToHTTPCookie() *http.Cookie {
@@ -209,6 +267,12 @@ func (cu *CookieUnion) GetHTTPCookies() []*http.Cookie {
 	return httpCookies
 }
 
+// IsDeleteMarker kiểm tra xem cookie có phải là lệnh xóa cookie cũ của Zalo hay không
+// (Set-Cookie mang value "EXPIRED" hoặc thời hạn năm 1970).
+func IsDeleteMarker(c Cookie) bool {
+	return c.Value == "EXPIRED" || (c.ExpirationDate > 0 && c.ExpirationDate < 86400)
+}
+
 func (cu *CookieUnion) BuildCookieJar(u *url.URL, jar http.CookieJar) {
 	cookieArr := cu.GetCookies()
 
@@ -221,13 +285,29 @@ func (cu *CookieUnion) BuildCookieJar(u *url.URL, jar http.CookieJar) {
 	if jar == nil {
 		jar, _ = cookiejar.New(nil)
 	}
-	cookies := make([]*http.Cookie, len(cookieArr))
 
-	for i, c := range cookieArr {
-		cookies[i] = c.ToHTTPCookie()
+	domainGroups := make(map[string][]*http.Cookie)
+	for _, c := range cookieArr {
+		if IsDeleteMarker(c) {
+			continue // Bỏ qua cookie xóa để bảo vệ session token
+		}
+		hc := c.ToHTTPCookie()
+		domain := c.Domain
+		if domain == "" && u != nil {
+			domain = u.Host
+		}
+		domainGroups[domain] = append(domainGroups[domain], hc)
 	}
 
-	jar.SetCookies(u, cookies)
+	for domain, cks := range domainGroups {
+		targetURL := u
+		if domain != "" {
+			if parsed, err := url.Parse("https://" + domain); err == nil {
+				targetURL = parsed
+			}
+		}
+		jar.SetCookies(targetURL, cks)
+	}
 }
 
 func (cu CookieUnion) MarshalJSON() ([]byte, error) {

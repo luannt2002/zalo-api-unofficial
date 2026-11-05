@@ -508,6 +508,10 @@ func waitingScan(
 			continue
 		}
 
+		if body.ErrorCode != 0 {
+			return nil, errs.NewZCA(fmt.Sprintf("waiting-scan returned error code %d", body.ErrorCode), "auth.waitingScan")
+		}
+
 		return body, nil
 	}
 }
@@ -589,6 +593,10 @@ func waitingConfirm(
 			case <-time.After(qrPollBackoff):
 			}
 			continue
+		}
+
+		if body.ErrorCode != 0 {
+			return nil, errs.NewZCA(fmt.Sprintf("waiting-scan returned error code %d", body.ErrorCode), "auth.waitingScan")
 		}
 
 		return body, nil

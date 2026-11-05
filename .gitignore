@@ -1,6 +1,7 @@
 # Credentials/session và artifacts local
 .env
 .env.*
+!.env.test.example
 cookies.json
 credentials.json
 qr.png

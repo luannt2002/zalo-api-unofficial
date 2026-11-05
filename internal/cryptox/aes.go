@@ -44,9 +44,18 @@ func DecodeAESCBC(key []byte, data string) ([]byte, error) {
 		return nil, fmt.Errorf("cryptox: base64 decode: %w", err)
 	}
 
+	return DecodeAESCBCDirect(key, ciphertext)
+}
+
+// DecodeAESCBCDirect giải mã trực tiếp ciphertext nhị phân sử dụng AES-CBC với IV = 0^16 và PKCS#7 unpadding.
+func DecodeAESCBCDirect(key, ciphertext []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, fmt.Errorf("cryptox: new cipher: %w", err)
+	}
+
+	if len(ciphertext) == 0 || len(ciphertext)%aes.BlockSize != 0 {
+		return nil, fmt.Errorf("cryptox: ciphertext length %d is not a multiple of block size", len(ciphertext))
 	}
 
 	iv := make([]byte, aes.BlockSize)
@@ -75,6 +84,41 @@ func DecodeAESGCM(key, iv, aad, ct []byte) ([]byte, error) {
 	plain, err := gcm.Open(nil, iv, ct, aad)
 	if err != nil {
 		return nil, fmt.Errorf("cryptox: gcm open: %w", err)
+	}
+
+	return plain, nil
+}
+
+// DecodeAES256GCM giải mã dữ liệu E2EE/Media Zalo sử dụng chuẩn linear AES-256-GCM.
+// Yêu cầu: key 32 bytes, iv (nonce) 12 bytes, auth tag 16 bytes.
+func DecodeAES256GCM(key, iv, tag, ct []byte) ([]byte, error) {
+	if len(key) != 32 {
+		return nil, fmt.Errorf("cryptox: key must be 32 bytes (got %d)", len(key))
+	}
+	if len(iv) != 12 {
+		return nil, fmt.Errorf("cryptox: iv must be 12 bytes (got %d)", len(iv))
+	}
+	if len(tag) != 16 {
+		return nil, fmt.Errorf("cryptox: tag must be 16 bytes (got %d)", len(tag))
+	}
+
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, fmt.Errorf("cryptox: new cipher: %w", err)
+	}
+
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, fmt.Errorf("cryptox: new gcm: %w", err)
+	}
+
+	ciphertextWithTag := make([]byte, len(ct)+len(tag))
+	copy(ciphertextWithTag, ct)
+	copy(ciphertextWithTag[len(ct):], tag)
+
+	plain, err := gcm.Open(nil, iv, ciphertextWithTag, nil)
+	if err != nil {
+		return nil, fmt.Errorf("cryptox: gcm auth verification failed: %w", err)
 	}
 
 	return plain, nil
