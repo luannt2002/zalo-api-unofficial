@@ -199,6 +199,28 @@ type endpoints struct {
 	RenewLink          RenewLinkFn
 	GetMiniProfiles    GetMiniProfilesFn
 	GetZNoise          GetZNoiseFn
+
+	// Bank account APIs
+	GetSupportedBanks  GetSupportedBanksFn
+	GetListBankAccount GetListBankAccountFn
+	CreateBankAccount  CreateBankAccountFn
+	DeleteBankAccount  DeleteBankAccountFn
+	UpdateBankAccount  UpdateBankAccountFn
+
+	// Device & security APIs
+	GetListDevice GetListDeviceFn
+	ScanURL       ScanURLFn
+	LostFocus     LostFocusFn
+
+	// Sticker & Giphy APIs
+	GetGiphyGifTrending         GetGiphyGifTrendingFn
+	SearchGiphyGif              SearchGiphyGifFn
+	GetGiphyGifDictionaries     GetGiphyGifDictionariesFn
+	GetGiphyCategories          GetGiphyCategoriesFn
+	GetStickerCategories        GetStickerCategoriesFn
+	GetCategoryDetail           GetCategoryDetailFn
+	GetStickerSuggestedKeywords GetStickerSuggestedKeywordsFn
+	GetTenorStickerMapping      GetTenorStickerMappingFn
 }
 
 func (a *api) initEndpoints() error {
@@ -371,6 +393,28 @@ func (a *api) initEndpoints() error {
 		bind(a.sc, a, &a.e.RenewLink, renewLinkFactory),
 		bind(a.sc, a, &a.e.GetMiniProfiles, getMiniProfilesFactory),
 		bind(a.sc, a, &a.e.GetZNoise, getZNoiseFactory),
+
+		// Bank account APIs
+		bind(a.sc, a, &a.e.GetSupportedBanks, getSupportedBanksFactory),
+		bind(a.sc, a, &a.e.GetListBankAccount, getListBankAccountFactory),
+		bind(a.sc, a, &a.e.CreateBankAccount, createBankAccountFactory),
+		bind(a.sc, a, &a.e.DeleteBankAccount, deleteBankAccountFactory),
+		bind(a.sc, a, &a.e.UpdateBankAccount, updateBankAccountFactory),
+
+		// Device & security APIs
+		bind(a.sc, a, &a.e.GetListDevice, getListDeviceFactory),
+		bind(a.sc, a, &a.e.ScanURL, scanURLFactory),
+		bind(a.sc, a, &a.e.LostFocus, lostFocusFactory),
+
+		// Sticker & Giphy APIs
+		bind(a.sc, a, &a.e.GetGiphyGifTrending, getGiphyGifTrendingFactory),
+		bind(a.sc, a, &a.e.SearchGiphyGif, searchGiphyGifFactory),
+		bind(a.sc, a, &a.e.GetGiphyGifDictionaries, getGiphyGifDictionariesFactory),
+		bind(a.sc, a, &a.e.GetGiphyCategories, getGiphyCategoriesFactory),
+		bind(a.sc, a, &a.e.GetStickerCategories, getStickerCategoriesFactory),
+		bind(a.sc, a, &a.e.GetCategoryDetail, getCategoryDetailFactory),
+		bind(a.sc, a, &a.e.GetStickerSuggestedKeywords, getStickerSuggestedKeywordsFactory),
+		bind(a.sc, a, &a.e.GetTenorStickerMapping, getTenorStickerMappingFactory),
 	)
 }
 

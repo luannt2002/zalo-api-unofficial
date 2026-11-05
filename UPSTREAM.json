@@ -22,6 +22,10 @@
       "4f57e8a (getMiniProfiles MiniProfileType enum: User/OA/ZOA)",
       "8c734ed (getExtraFriendInfo API)",
       "3d7d281 (getExtraGroupInfo API)",
+      "PR #327 / 9bcb3da, 1304580, f0995ba, fd7a82a (bank account APIs: getSupportedBanks, getListBankAccount, createBankAccount, deleteBankAccount, updateBankAccount)",
+      "PR #327 / ff78bcf, d925e90, 3182c43 (device & security APIs: getListDevice, scanURL, lostFocus)",
+      "505f3c4, cf7d9ba, cf50fea, d9f1165, a4a2936, 6fc076f, 54a923a (sticker & giphy APIs: getGiphyGifTrending, searchGiphyGif, getGiphyGifDictionaries, getGiphyCategories, getStickerCategories, getCategoryDetail, getStickerSuggestedKeywords, getTenorStickerMapping)",
+      "7838da1 (utilities: normalizeHolderName, hexToNegativeColor, negativeColorToHex, encryptPin, validatePin)",
       "zca-js 2.1.2 patch: pinned_convers, mark_unread, voip, 30 s stable window, 1006 2/5/10/20/30/60 s x8"
     ],
     "deferred": [
@@ -32,10 +36,6 @@
       {
         "ref": "closed on stop()",
         "reason": "upstream always emits closed(1000) after stop(); Go emits it only sometimes (3/40 measured). Always or never is an API decision"
-      },
-      {
-        "ref": "d04282c (PR #327)",
-        "reason": "new APIs and API_VERSION 671->685: not listener; wire constant needs its own audit"
       },
       {
         "ref": "PR #382, #393",
@@ -74,8 +74,12 @@
         "sha": "d04282c",
         "pr": 327,
         "subject": "add new apis (bank accounts, getListDevice, lostFocus, registerCatalog, scanURL; API_VERSION 671->685)",
-        "status": "deferred",
-        "note": "not listener; Go config.DefaultAPIVersion is 665, wire constant change needs its own audit"
+        "status": "ported",
+        "note": "Ported bank account suite (supported, list, create, delete, update), device listing, URL safety scan, and focus change with thread-safe factories",
+        "tests": [
+          "api/TestBankAccountValidation",
+          "api/TestScanURLValidation"
+        ]
       },
       {
         "sha": "dadfef1",

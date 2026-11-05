@@ -33,3 +33,38 @@ type StickerDetail struct {
 	Version          int    `json:"version"`
 	ExtInfo          any    `json:"extInfo"`
 }
+
+type TenorSticker struct {
+	ID  string `json:"id"`
+	CID int    `json:"cid"`
+	EID int    `json:"eid"`
+}
+
+type GifMedia struct {
+	Width  int    `json:"width"`
+	Height int    `json:"height"`
+	URL    string `json:"url"`
+}
+
+type CategoryDetail struct {
+	ID          int    `json:"id"`
+	Name        string `json:"name"`
+	Desc        string `json:"desc"`
+	TotalImage  int    `json:"totalImage"`
+	ThumbURL    string `json:"thumbUrl"`
+	IconURL     string `json:"iconUrl"`
+	IconPreview string `json:"iconPreview"`
+	Price       int    `json:"price"`
+	Group       int    `json:"group"`
+	Status      int    `json:"status"`
+	Version     int    `json:"version"`
+	ThumbImg    string `json:"thumbImg"`
+	Source      string `json:"source"`
+	Type        int    `json:"type"`
+	SourceURL   string `json:"sourceUrl"`
+	Permission  int    `json:"permission"`
+	ExpireTime  int64  `json:"expireTime"`
+	IsHidden    int    `json:"is_hidden"`
+	Order       int    `json:"order"`
+}
+

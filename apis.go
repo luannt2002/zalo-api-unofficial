@@ -1220,4 +1220,26 @@ type API interface {
 	HarvestGroup(ctx context.Context, groupID string) (*api.GroupHarvestResult, error)
 	// GetZNoise retrieves context-dependent noise IDs (negative int64) used in voicecall signaling (cmd 12390).
 	GetZNoise(ctx context.Context, req api.GetZNoiseRequest) (*api.GetZNoiseResponse, error)
+
+	// Bank account APIs
+	GetSupportedBanks(ctx context.Context) (*api.GetSupportedBanksResponse, error)
+	GetListBankAccount(ctx context.Context, page, limit int) (*api.GetListBankAccountResponse, error)
+	CreateBankAccount(ctx context.Context, req api.CreateBankAccountRequest) (*api.CreateBankAccountResponse, error)
+	DeleteBankAccount(ctx context.Context, accountID int64, isDefault bool) (*api.DeleteBankAccountResponse, error)
+	UpdateBankAccount(ctx context.Context, req api.UpdateBankAccountRequest) (*api.UpdateBankAccountResponse, error)
+
+	// Device and Security APIs
+	GetListDevice(ctx context.Context) (*api.GetListDeviceResponse, error)
+	ScanURL(ctx context.Context, targetURL string) (*api.ScanURLResponse, error)
+	LostFocus(ctx context.Context) (*api.LostFocusResponse, error)
+
+	// Giphy and Sticker APIs
+	GetGiphyGifTrending(ctx context.Context, offset, limit int) (*api.GetGiphyGifTrendingResponse, error)
+	SearchGiphyGif(ctx context.Context, keyword string, offset, limit int) (*api.SearchGiphyGifResponse, error)
+	GetGiphyGifDictionaries(ctx context.Context, offset, limit int) (*api.GetGiphyGifDictionariesResponse, error)
+	GetGiphyCategories(ctx context.Context, offset, limit int) (*api.GetGiphyCategoriesResponse, error)
+	GetStickerCategories(ctx context.Context) (*api.GetStickerCategoriesResponse, error)
+	GetCategoryDetail(ctx context.Context, cateID int) (*api.GetCategoryDetailResponse, error)
+	GetStickerSuggestedKeywords(ctx context.Context) (*api.GetStickerSuggestedKeywordsResponse, error)
+	GetTenorStickerMapping(ctx context.Context) (*api.GetTenorStickerMappingResponse, error)
 }
