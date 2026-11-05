@@ -1,8 +1,40 @@
 # Changelog
 
-## Unreleased (đề xuất v0.2.0)
+## v0.3.0 (2026-11-05)
 
-Đồng bộ zca-js tới `0586dc5` (2026-10-28) + bản vá cộng đồng zca-js 2.1.2.
+Tích hợp toàn diện giá trị nghiên cứu từ `debug` (Trục 1–5, Wave 1–25, mốc 1005) và đồng bộ upstream `zca-js` tới commit `2a7e360` (2026-10-29).
+
+### 1. Đồng bộ upstream `zca-js` (commit `2a7e360`):
+- **`Logout` API (`api/logout.go`)**: Tái lập toàn vẹn quy trình đăng xuất của Zalo Web: lấy logout-token từ `id.zalo.me`, gửi `/account/logout`, bóc tách danh sách iframe `listSetSidUrls` để vô hiệu hóa session cookie `zpsid`/`zpw_sek` trên tất cả domain Zalo, và ngắt WebSocket listener.
+- **`MiniProfileType` enum (`api/get_mini_profiles.go`)**: Bổ sung phân loại tài khoản: `User = 0` (cá nhân), `OA = 5` (Official Account), `ZOA = 7` (Official Account hệ thống Zalo).
+- **`AddReaction` validation**: Kiểm tra hợp lệ kiểu thread (chỉ chấp nhận User hoặc Group), ném lỗi rõ ràng thay vì lỗi request.
+
+### 2. Tích hợp hệ thống REA & Nghiên cứu Debug:
+- **Định danh GID & Pipeline Toán học (Trục 2 & mốc 1005)**:
+  - Cài đặt đầy đủ bộ 5 API GID: `ConvertGlobalID`, `DecryptGlobalID`, `EncryptGlobalID`, `ResolveUidViaGid`, `TranslateViewerUid`.
+  - Math T1 (anchor mask), T2 (`send2me` XOR), bóc tách Snowflake epoch 2011 (`pkg/gid`).
+- **Cloud Message History & Segment Boundaries (Wave 25 & B2)**:
+  - `GetGroupChatHistoryEx`: Hỗ trợ đầy đủ bộ ba endpoint Cloud Message live (`/api/cm/getrecentv2` 12506, `/api/cm/getoldv2` 12507, `/api/cm/rgetv2` 12508).
+  - Giải mã tự động chuỗi JSON lồng nhau 2 lớp đặc thù của Zalo.
+  - Bộ lọc ranh giới tin nhắn đã xóa `FilterDeletedMessages` (`_checkDeletedMessage`) dùng `math/big.Int` bảo toàn độ chính xác cho ID $> 2^{53}$.
+  - Gộp ranh giới phân đoạn `MergeCloudBoundary` an toàn với số nguyên 64-bit.
+- **Hợp đồng Media Renew 2 pha & Bộ giải mã (Wave 15 & 21)**:
+  - `RenewLink`: Chuyển đổi enum số học (File=1, Photo=2, Video=5), `isOriginal=1`, `isGroup=1`.
+  - `RenewLinkWait`: Kết nối bất đồng bộ HTTP cmd 12094 và WebSocket frame cmd 601 (`renew_control`).
+  - `pkg/media/classifier.go`: Phân loại host, bóc tách timestamp Unix, kiểm tra thời hạn URL và mặt nạ sanitized shape.
+  - `pkg/media/gcm.go`: Giải mã xác thực AES-256-GCM (`media-gcm-auth.mjs`).
+- **Hạ tầng Native & Transport Secret (Trục 4 & 5)**:
+  - `internal/cryptox/socket.go`: Port `encodeSocketParamsNative` từ `libnative_utils.so` (VA 0x27ecc, hằng số 16-byte `SocketConst16`, magic `0x305b1f1d`).
+  - `internal/cryptox/zcid_key.go`: Dẫn xuất khóa HTTP Mobile từ 32-hex ZCID qua thuật toán đan xen của `CoreUtils.a`.
+  - `api/get_znoise.go`: API `/api/znoise` (cmd 12390) sinh ID âm 64-bit phục vụ voicecall signaling.
+- **Chẩn đoán Session & Quét QR An toàn**:
+  - `session/inspect.go`: Đo đạc offline UID-9, Snowflake epoch, phát hiện delete markers (`EXPIRED` / 1970).
+  - `ClassifyCookieChanges`: Phân loại biến thiên cookie (`Added`, `Removed`, `ValueChanged`, `MetadataChanged`).
+  - `session/auth/login_qr.go`: Chặn lỗi mã `-20` (device-linking token bị hủy) chống treo quét mã.
+- **Kỷ luật kiểm thử cách ly định danh**:
+  - Module `internal/testenv` nạp động toàn bộ test ID từ `.env.test` (hoặc fallback `.env.test.example`), loại bỏ hoàn toàn hardcoded ID trong mã nguồn và test.
+
+## v0.2.0 (2026-10-28)
 
 Listener và model đã đối chiếu tới commit đó, kèm các PR còn mở chạm `listen.ts` (#380, #387, #391, một phần
 #371); điểm bắt đầu lần đồng bộ sau là `listener_synced_through` trong `UPSTREAM.json`, chi tiết từng PR và bảng
